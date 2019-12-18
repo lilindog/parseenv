@@ -14,7 +14,7 @@ module.exports = function (envPath) {
     }
     let 
     data = {},
-    str = fs.readFileSync("./test.env").toString();
+    str = fs.readFileSync(envPath).toString();
     str = str.replace(/\r{2}/g, "\r");
     str = str.replace(/\n/g, "");
     str = str.split("\r");
