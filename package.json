@@ -1,6 +1,6 @@
 {
   "name": "parseenv",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "解析自定义后缀名为.env文件的模块",
   "main": "index.js",
   "directories": {
