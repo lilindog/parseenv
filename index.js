@@ -15,11 +15,9 @@ module.exports = function (envPath) {
     let 
     data = {},
     str = fs.readFileSync(envPath).toString();
-    str = str.replace(/\r{2}/g, "\r");
-    str = str.replace(/\n/g, "");
-    str = str.split("\r");
-    str = str.filter(item => !~item.indexOf("#") && item !== "" && ~item.indexOf("="));
-    str = str.map(item => item.replace(/\s/g, ""));
+    str = str.replace(/\n{2,}/g, "\n");
+    str = str.split("\n").map(item => item.replace(/\s/g, ""));
+    str = str.filter(item => item.charAt(0) !== "#" && item.indexOf("=") > 0 && item.indexOf("#") < item.length - 1);
     // console.log(str);
     str = str.map(item => {
         data[item.split("=")[0]] = item.split("=")[1];
