@@ -42,7 +42,7 @@ function parseInclude (envpath, res = []) {
 function parseKV (str = "") {
     let data = {};
     str = str.replace(/\n{2,}/g, "\n");
-    str = str.split("\n").map(item => item.replace(/\s+$|^\s+|\s+(?=\=)|(?<=\=)\s+/g, "").replace());
+    str = str.split("\n").map(item => item.replace(/\s+$|^\s+|\s+(?=\=)|(?<=\=)\s+/g, ""));
     str = str.filter(item => item.charAt(0) !== "#" && ~item.indexOf("=") && item.indexOf("#") < item.length - 1);
     str = str.map(item => {
         data[item.split("=")[0]] = item.split("=")[1];
