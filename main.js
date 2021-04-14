@@ -1,9 +1,12 @@
 "use strict"
 
-const fs = require("fs");
-const path = require("path");
+const 
+fs = require("fs"),
+path = require("path");
 
-const INCLUDE_REG = /include\s+[^\n]+/ig;
+const 
+INCLUDE_REG = /include\s+[^\n]+/ig,
+ARRKEY_REG = /^\s*(\w+)\[\]\s*$/i;
 
 function errorMSG (msg) {
     return `[Parseenv] 报错：${msg}`;
@@ -40,12 +43,17 @@ function parseInclude (envpath, res = []) {
  * @return {Object} 
  */
 function parseKV (str = "") {
-    let data = {};
-    str = str.replace(/\n{2,}/g, "\n");
-    str = str.split("\n").map(item => item.replace(/\s+$|^\s+|\s+(?=\=)|(?<=\=)\s+/g, ""));
-    str = str.filter(item => item.charAt(0) !== "#" && ~item.indexOf("=") && item.indexOf("#") < item.length - 1);
-    str = str.map(item => {
-        data[item.split("=")[0]] = item.split("=")[1];
+    const data = {};
+    str.replace(/\n{2,}/g, "\n").split("\n").filter(row => /^\s*(?:\w+|\w+\[\])\s*=\s*[^=]+$/i.test(row))
+    .map(item => {
+        let [ key, value ] = item.replace(/\s=\s/, "=").split("=");
+        if (ARRKEY_REG.test(key)) {
+            key = ARRKEY_REG.exec(key)[1];
+            if (!data[key]) data[key] = [];
+            data[key].push(value);
+        } else {
+            data[key] = value;
+        }
     });
     return data;
 }

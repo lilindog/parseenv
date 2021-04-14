@@ -10,6 +10,7 @@
 1. 每行一对key value；用等于号分割。   
 2. 每行以#号开头代表注释。   
 3. 包含语法 ```include xxx``` 请正确写明引入env文件，后缀可带可不带。   
+4. 支持集合语法，写作 ```KEY[] = value```, 详见示例。   
 
 示例：
 
@@ -17,6 +18,10 @@ comm.env
 ```js
 # 这是公共的.env配置文件
 WEB_TITLE = 这是我的网站标题
+
+# 这是数组写法，只支持1维， env的初衷就是不嵌套。
+TEST_ARR[] = 1
+TEST_ARR[] = 2
 ```
 dev.env
 ```js
@@ -42,4 +47,4 @@ const parseEnv = require("./parseEnv");
 console.log(parseEnv(envFilePath));
 ```
 
-*最近更新于 2021-03-16 下午4:31分*
+*最近更新于 2021-04-14 上午10:47分*
