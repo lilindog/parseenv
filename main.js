@@ -52,7 +52,7 @@ function parseKV (str = "") {
             if (!data[key]) data[key] = [];
             data[key].push(value);
         } else {
-            data[key] = value;
+            data[key.trim()] = value.trim();
         }
     });
     return data;

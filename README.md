@@ -7,7 +7,7 @@
 将错就错，继续维护，添加一些自己喜欢的特性。   
 
 ### 语法
-1. 每行一对key value；用等于号分割。   
+1. 每行一对key value；用等于号分割, key和value两端的空格将被忽略。   
 2. 每行以#号开头代表注释。   
 3. 包含语法 ```include xxx``` 请正确写明引入env文件，后缀可带可不带。   
 4. 支持集合语法，写作 ```KEY[] = value```, 详见示例。   
@@ -47,4 +47,4 @@ const parseEnv = require("./parseEnv");
 console.log(parseEnv(envFilePath));
 ```
 
-*最近更新于 2021-04-14 上午10:47分*
+*最近更新于 2021-04-15 上午16:13分*
