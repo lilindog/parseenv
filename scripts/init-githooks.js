@@ -41,7 +41,7 @@ function main () {
 
 function writeHookFile (path) {
     writeFileSync(
-        `.git/hooks/${parse(path).name.split("_")[1]}`, 
+        `.git/hooks/${parse(path).name}`, 
         `#!/usr/bin/env node
         const { spawn } = require("child_process");
         const cp = spawn("node", ["${path}"], { stdio: "inherit" });
