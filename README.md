@@ -7,21 +7,29 @@
 将错就错，继续维护，添加一些自己喜欢的特性。   
 
 ### 语法
-1. 每行一对key value；用等于号分割, key和value两端的空格将被忽略。   
-2. 每行以#号开头代表注释。   
+1. 每行以#号开头代表注释。   
+2. 每行一对key value；用等于号分割, key和value两端的空格将被忽略。   
 3. 包含语法 ```include xxx``` 请正确写明引入env文件，后缀可带可不带。   
 4. 支持集合语法，写作 ```KEY[] = value```, 详见示例。   
+5. 支持字典语法，写作 ```DICT{ field } = value```, 详见示例。
 
 示例：
 
 comm.env
 ```js
 # 这是公共的.env配置文件
+
+# 这是普通key,value写法
 WEB_TITLE = 这是我的网站标题
 
-# 这是数组写法，只支持1维， env的初衷就是不嵌套。
+# 这是数组写法，只支持1维， env的初衷就是不嵌套
 TEST_ARR[] = 1
 TEST_ARR[] = 2
+
+# 这是字典写法，只支持1维
+TEST_DICT{name} = lilin
+TEST_DICT{age}  = 28
+
 ```
 dev.env
 ```js
@@ -37,14 +45,28 @@ MODE = production
 ```
 
 ### API使用
-导出一个函数，直接传入.env 文件路径即可完成解析，返回key、value对象。
+导出一个函数，直接传入.env 文件路径即可完成解析，返回解析后的结果。
+
+1.假如有一个名为test.env的配置文件
+```sh
+PASS         = 1234567
+DICT{field1} = hello
+DICT{field2} = world
+ARR[]        = 1
+ARR[]        = 2
+```
+2.解析上面这个test.env
 ```js
-//env文件路径
-const envFilePath = "./test.env";
-//引入parseEnv
 const parseEnv = require("./parseEnv");
-//输出解析后的env
-console.log(parseEnv(envFilePath));
+console.log(parseEnv("./test.env"));
+// 输出示例：
+/*
+{
+    PASS: 1234567,
+    DICT: { field1: "hello", field2: "world" },
+    ARR: [ 1, 2 ]
+}
+*/
 ```
 
-*最近更新于 2021-04-15 上午16:13分*
+*最近更新于 2021-04-16 AM 10:57*
