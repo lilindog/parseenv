@@ -1,22 +1,25 @@
 {
   "name": "parseenv",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "解析自定义后缀名为.env文件的模块",
-  "main": "main.js",
-  "directories": {
-    "test": "test"
-  },
+  "main": "src/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "preinstall": "node scripts/init-githooks.js",
+    "lint": "eslint src/"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lilindog/parseEnv.git"
   },
-  "author": "lilindog",
+  "author": "lilindog<lilin@lilin.site>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/lilindog/parseEnv/issues"
   },
-  "homepage": "https://github.com/lilindog/parseEnv#readme"
+  "homepage": "https://github.com/lilindog/parseEnv#readme",
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "chalk": "^4.1.0",
+    "eslint": "^7.24.0"
+  }
 }

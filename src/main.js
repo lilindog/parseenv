@@ -5,8 +5,10 @@ fs = require("fs"),
 path = require("path");
 
 const 
+ROW_REG = /^\s*(?:\w+|\w+\[\]|\w+\{\s*\w+\s*\})\s*=\s*[^=]+$/i,
 INCLUDE_REG = /include\s+[^\n]+/ig,
-ARRKEY_REG = /^\s*(\w+)\[\]\s*$/i;
+ARRKEY_REG = /^\s*(\w+)\[\]\s*$/i,
+OBJKEY_REG = /^\s*(\w+)\{\s*(\w+)\s*\}\s*/i;
 
 function errorMSG (msg) {
     return `[Parseenv] 报错：${msg}`;
@@ -43,19 +45,25 @@ function parseInclude (envpath, res = []) {
  * @return {Object} 
  */
 function parseKV (str = "") {
-    const data = {};
-    str.replace(/\n{2,}/g, "\n").split("\n").filter(row => /^\s*(?:\w+|\w+\[\])\s*=\s*[^=]+$/i.test(row))
-    .map(item => {
+    return str.replace(/\n{2,}/g, "\n").split("\n").filter(row => ROW_REG.test(row))
+    .reduce((data, item) => {
         let [ key, value ] = item.replace(/\s=\s/, "=").split("=");
-        if (ARRKEY_REG.test(key)) {
+        if (OBJKEY_REG.test(key)) {
+            let field;
+            [ key, field ] = OBJKEY_REG.exec(key).slice(1);
+            if (!data[key]) data[key] = {};
+            data[key][field] = value.trim();
+        }
+        else if (ARRKEY_REG.test(key)) {
             key = ARRKEY_REG.exec(key)[1];
             if (!data[key]) data[key] = [];
-            data[key].push(value);
-        } else {
+            data[key].push(value.trim());
+        } 
+        else {
             data[key.trim()] = value.trim();
         }
-    });
-    return data;
+        return data;
+    }, {});
 }
 
 module.exports = envpath => parseKV(parseInclude(envpath));
