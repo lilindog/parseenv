@@ -13,14 +13,11 @@ const platform = require("os").platform();
 const { execSync } = require("child_process");
 
 // 存放脚本的目录
-const SCRIPTS_DIR = "scripts";
+const 
+    SCRIPTS_DIR = "scripts",
+    IS_THIS_PROJECT = (process.env?.INIT_CWD ?? "").endsWith(process.env.npm_package_name);
 
-
-console.log(">>>>>");
-console.log(process.cwd());
-console.log(process.env);
-console.log("<<<<<");
-// main();
+IS_THIS_PROJECT && main();
 
 function main () {
     console.log("开始部署本地githooks >>");
