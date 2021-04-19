@@ -15,7 +15,12 @@ const { execSync } = require("child_process");
 // 存放脚本的目录
 const SCRIPTS_DIR = "scripts";
 
-main();
+
+console.log(">>>>>");
+console.log(process.cwd());
+console.log(process.env);
+console.log("<<<<<");
+// main();
 
 function main () {
     console.log("开始部署本地githooks >>");
