@@ -18,6 +18,11 @@ function checkFile (path) {
     return fs.existsSync(path);
 }
 
+function handleValue (value = "") {
+    value = value.trim();
+    return /^\d+$/.test(value) ? Number(value) : value;
+}
+
 /**
  * 解析include, 返回解析好的kv对文本
  * 
@@ -51,15 +56,15 @@ function parseKV (str = "") {
             let field;
             [ key, field ] = OBJKEY_REG.exec(key).slice(1);
             if (!data[key]) data[key] = {};
-            data[key][field] = value.trim();
+            data[key][field] = handleValue(value);
         }
         else if (ARRKEY_REG.test(key)) {
             key = ARRKEY_REG.exec(key)[1];
             if (!data[key]) data[key] = [];
-            data[key].push(value.trim());
+            data[key].push(handleValue(value));
         } 
         else {
-            data[key.trim()] = value.trim();
+            data[key.trim()] = handleValue(value);
         }
         return data;
     }, {});
