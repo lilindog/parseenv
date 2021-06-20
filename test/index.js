@@ -13,7 +13,7 @@ const
         b: 200
     };
 
-describe("开始测试！", () => {
+describe("开始进行单元测试测试！", () => {
     it("解析base.env", () => {
         const env = parseenv(path.resolve(__dirname, "./base.env"));
         chai.assert.isObject(env);
