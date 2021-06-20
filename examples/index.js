@@ -1,2 +1,2 @@
 const parseEnv = require("../src/main");
-console.log(parseEnv("./test.env"));
+console.log(parseEnv("./main.env"));

@@ -4,6 +4,7 @@
   "description": "解析自定义后缀名为.env文件的模块",
   "main": "src/main.js",
   "scripts": {
+    "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
     "lint": "eslint src/"
   },
@@ -19,7 +20,9 @@
   "homepage": "https://github.com/lilindog/parseEnv#readme",
   "devDependencies": {
     "babel-eslint": "^10.1.0",
+    "chai": "^4.3.4",
     "chalk": "^4.1.0",
-    "eslint": "^7.24.0"
+    "eslint": "^7.24.0",
+    "mocha": "^9.0.1"
   }
 }
