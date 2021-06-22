@@ -15,7 +15,7 @@ const { execSync } = require("child_process");
 // 存放脚本的目录
 const 
     SCRIPTS_DIR = "scripts",
-    IS_THIS_PROJECT = (process.env?.INIT_CWD ?? "").endsWith(process.env.npm_package_name);
+    IS_THIS_PROJECT = (process.env.INIT_CWD || "").endsWith(process.env.npm_package_name);
 
 IS_THIS_PROJECT && main();
 
