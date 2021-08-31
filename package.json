@@ -3,6 +3,7 @@
   "version": "2.2.2",
   "description": "解析自定义后缀名为.env文件的模块",
   "main": "src/main.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
