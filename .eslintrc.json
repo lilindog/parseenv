@@ -55,6 +55,8 @@
         // 逗号后必须跟空格
         "comma-spacing": ["error"],
         // 逗号不能出现在行开头
-        "comma-style": ["error", "last"]
+        "comma-style": ["error", "last"],
+        // 禁用不必要的转义符
+        "no-useless-escape": ["off"]
     }
 }

@@ -2,38 +2,35 @@
 
 const 
     fs = require("fs"),
-    path = require("path");
-
-const 
-    ROW_REG = /^\s*(?:\w+|\w+\[\]|\w+\{\s*\w+\s*\})\s*=\s*[^=]+$/i,
-    INCLUDE_REG = /include\s+[^\n]+/ig,
-    ARRKEY_REG = /^\s*(\w+)\[\]\s*$/i,
-    OBJKEY_REG = /^\s*(\w+)\{\s*(\w+)\s*\}\s*/i;
-
-function errorMSG (msg) {
-    return `[Parseenv] 报错：${msg}`;
-}
-
-function checkFile (path) {
-    return fs.existsSync(path);
-}
+    path = require("path"),
+    { handleEnvironmentVariable, log } = require("./lib"),
+    {
+        ROW_REG,
+        INCLUDE_REG,
+        ARRKEY_REG,
+        OBJKEY_REG
+    } = require("./regs");
 
 function handleValue (value = "") {
     value = value.trim();
+    value = handleEnvironmentVariable(value);
     return /^\d+$/.test(value) ? Number(value) : value;
 }
 
 /**
  * 解析include, 返回解析好的kv对文本
  * 
- * @param  {String} str
+ * @param  {String} envpath
+ * @param  {Array}  res
  * @return {String}
  */
 function parseInclude (envpath, res = []) {
-    if (!checkFile(envpath)) throw errorMSG(`${envpath} 不存在！`);
+    if (!fs.existsSync(envpath)) return log(`include的 "${envpath}" env文件不存在！`);
     let 
         str = fs.readFileSync(envpath).toString(),
-        includes = (str.match(INCLUDE_REG) || []).map(statement => statement.replace(/\s+/g, " ").split(" ")[1]);
+        includes = (str.match(INCLUDE_REG) || [])
+            .map(statement => statement.replace(/\s+/g, " ").split(" ")[1])
+            .map(handleEnvironmentVariable);
     if (includes.length) res.unshift(str.replace(INCLUDE_REG, ""));
     else res.unshift(str);
     includes.forEach(include => {
