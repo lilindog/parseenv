@@ -19,8 +19,8 @@ LIST[] = 111
 LIST[] = 222
 
 # 字典
-DICT[name] = lilin
-DICT[age]  = 28
+DICT{name} = lilin
+DICT{age}  = 28
 
 # 环境变量插值
 # 需使用{}符号包含
