@@ -3,7 +3,13 @@
 const 
     fs = require("fs"),
     path = require("path"),
-    { handleEnvironmentVariable, log } = require("./lib"),
+    { 
+        handleEnvironmentVariable, 
+        log, 
+        isRemotePath, 
+        getRemoteEnv, 
+        mergeRemotePath 
+    } = require("./lib"),
     {
         ROW_REG,
         INCLUDE_REG,
@@ -18,26 +24,76 @@ function handleValue (value = "") {
 }
 
 /**
- * 解析include, 返回解析好的kv对文本
+ * 解析env文件里的所有include路径
+ * 
+ * @param  {String} str env文件字符串
+ * @return {Array<String>} 
+ */
+function parseIncludesInFile (str = "") {
+    return (str.match(INCLUDE_REG) || [])
+        .map(statement => statement.replace(/\s+/g, " ").split(" ")[1])
+        .map(handleEnvironmentVariable);
+}
+
+/**
+ * 解析所有本地env文件中的include路径
  * 
  * @param  {String} envpath
- * @param  {Array}  res
  * @return {String}
  */
-function parseInclude (envpath, res = []) {
+function parseIncludesInLocalFiles (envpath, res = []) {
+    envpath = path.resolve(envpath);
     if (!fs.existsSync(envpath)) return log(`include的 "${envpath}" env文件不存在！`);
-    let 
-        str = fs.readFileSync(envpath).toString(),
-        includes = (str.match(INCLUDE_REG) || [])
-            .map(statement => statement.replace(/\s+/g, " ").split(" ")[1])
-            .map(handleEnvironmentVariable);
-    if (includes.length) res.unshift(str.replace(INCLUDE_REG, ""));
-    else res.unshift(str);
-    includes.forEach(include => {
-        const p = `${path.parse(envpath).dir}/${include}${/.env$/i.test(include) ? "" : ".env"}`;
-        parseInclude(p, res);
+    parseIncludesInFile(
+        fs.readFileSync(envpath).toString()
+    ).forEach(include => {
+        if (isRemotePath(include)) {
+            return res.push(include);
+        }
+        parseIncludesInLocalFiles(path.resolve(path.parse(envpath).dir, include.endsWith(".env") ? include : include + ".env"), res);
     });
-    return res.join("\n");
+    res.push(envpath);
+    return res;
+}
+
+/**
+ * 异步解析env文件 （包含远程env和远程include）
+ * 
+ * @param  {Array} 要解析文件的所有include
+ * @return {String}
+ */
+async function parseFileAsync (includePaths = []) {
+    let s = "";
+    while (includePaths.length) {
+        const path = includePaths.shift();
+        if (isRemotePath(path)) s += "\n" + await f(path);
+        else s += "\n" + fs.readFileSync(path).toString();
+    }
+    return s;
+    async function f (remoteUrl = "") {
+        let s = await getRemoteEnv(remoteUrl);
+        if (!s) return "";
+        for (let i of parseIncludesInFile(s).sort(() => -1)) {
+            let newRemoteUrl = "";
+            if (isRemotePath(i)) newRemoteUrl = i;
+            else newRemoteUrl = mergeRemotePath(remoteUrl, i);
+            if (newRemoteUrl) s = await f(newRemoteUrl) + "\n" + s;
+        }
+        return s;
+    }
+}
+
+/**
+ * 解析env文件（仅本地）
+ * 
+ * @param  {Array<String>} includePaths
+ * @return {String}
+ */
+function parseFile (includePaths = []) {
+    return includePaths.reduce((t, c) => {
+        t += "\n" + fs.readFileSync(c).toString();
+        return t;
+    }, "");
 }
 
 /**
@@ -67,4 +123,15 @@ function parseKV (str = "") {
     }, {});
 }
 
-module.exports = envpath => parseKV(parseInclude(envpath));
+async function parseKVAsync () {
+    return parseKV(await parseFileAsync(arguments[0]));
+}
+
+module.exports = envPath => {
+    const includePaths = parseIncludesInLocalFiles(envPath);
+    if (includePaths.some(isRemotePath)) {
+        return parseKVAsync(includePaths);
+    } else {
+        return parseKV(parseFile(includePaths));
+    }
+};

@@ -1,3 +1,6 @@
 const parseEnv = require("../src/main");
-console.log("配置文件：");
-console.log(parseEnv("./main.env"));
+
+!void async function () {
+    console.log("配置文件：");
+    console.log(await parseEnv("./main.env"));
+}();
