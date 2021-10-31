@@ -43,7 +43,10 @@ function parseIncludesInFile (str = "") {
  */
 function parseIncludesInLocalFiles (envpath, res = []) {
     envpath = path.resolve(envpath);
-    if (!fs.existsSync(envpath)) return log(`include的 "${envpath}" env文件不存在！`);
+    if (!fs.existsSync(envpath)) {
+        log(`include的 "${envpath}" env文件不存在！`);
+        return res;
+    }
     parseIncludesInFile(
         fs.readFileSync(envpath).toString()
     ).forEach(include => {
