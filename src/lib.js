@@ -66,7 +66,7 @@ exports.getRemoteEnv = (remoteUrl = "", timeout = 2000) => {
             res.on("end", () => {
                 clearTimeout(id);
                 s = Buffer.from(data).toString();
-                if (ROW_REG.test(s) || INCLUDE_REG.test(s)) resolve(s);
+                if (s.match(ROW_REG) || s.match(INCLUDE_REG)) resolve(s);
                 else resolveUndefined();
             });
         }).on("error", resolveUndefined);
