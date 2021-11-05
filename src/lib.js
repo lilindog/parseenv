@@ -86,22 +86,22 @@ exports.getRemoteEnv = (remoteUrl = "", timeout = 2000) => {
  * @return {String} 合并后的url路径
  */
 exports.mergeRemotePath = (originPath, targetPath) => {
-    let base, paths, leftStep;
-    let { pathname, origin } = new url.URL(originPath);
+    targetPath = targetPath.endsWith(".env") ? targetPath : targetPath + ".env";
+    let paths, leftStep, urlObj = new url.URL(originPath);
     if (path.isAbsolute(targetPath)) {
-        return origin + (targetPath.endsWith(".env") ? targetPath : targetPath + ".env");
+        urlObj.pathname = targetPath;
+        return urlObj.toString();
     }
     else if (!/^(?:\.\/|\.\.\/)*(\w)+?(?:\.env)?$/.test(targetPath)) {
         return exports.log("originPath: " + originPath + " -> " + targetPath + " include路径不合法！");
     }
-    base = path.parse(targetPath).base;
-    pathname = path.dirname(pathname);
     leftStep = (targetPath.match(/\.\.\//g) || []).length;
-    paths = pathname.split("/").filter(i => i);
+    paths = path.dirname(urlObj.pathname).split("/").filter(i => i);
     if (paths.length < leftStep) return exports.log("路径错误：" + originPath + " -> " + targetPath);
     while (leftStep > 0) {
         paths.pop();
         leftStep--;
     }
-    return origin + paths.join("/") + "/" + (base.endsWith(".env") ? base : base + ".env");
+    urlObj.pathname = paths.join("/") + "/" + targetPath.replace(/(?:\.\/|\.\.\/)/g, "");
+    return urlObj.toString();
 };
