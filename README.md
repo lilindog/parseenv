@@ -16,7 +16,7 @@
 ## 引入本地其它.env文件
 include ./base.env
 
-## 引入远程其它.env文件(必须是http协议链接)
+## 引入远程其它.env文件(必须是http/https链接)
 include http://source.lilin.site/config/comm.env
 
 # 普通key -> value配置写法
