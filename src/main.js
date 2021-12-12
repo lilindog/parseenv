@@ -1,21 +1,15 @@
 "use strict";
 
-const 
-    fs = require("fs"),
-    path = require("path"),
-    { 
-        handleEnvironmentVariable, 
-        log, 
-        isRemotePath, 
-        getRemoteEnv, 
-        mergeRemotePath 
-    } = require("./lib"),
-    {
-        ROW_REG,
-        INCLUDE_REG,
-        ARRKEY_REG,
-        OBJKEY_REG
-    } = require("./regs");
+const fs = require("fs");
+const path = require("path");
+const { ROW_REG, INCLUDE_REG, ARRKEY_REG, OBJKEY_REG } = require("./regs");
+const {
+    handleEnvironmentVariable,
+    log,
+    isRemotePath,
+    getRemoteEnv,
+    mergeRemotePath
+} = require("./lib");
 
 function handleValue (value = "") {
     value = value.trim();

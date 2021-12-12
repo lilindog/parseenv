@@ -1,15 +1,10 @@
 "use strict";
 
-const 
-    { 
-        ENV_INJECTION,
-        ROW_REG,
-        INCLUDE_REG
-    } = require("./regs"),
-    url = require("url"),
-    path = require("path"),
-    { get: httpGet } = require("http"),
-    { get: httpsGet } = require("https");
+const { ENV_INJECTION, ROW_REG, INCLUDE_REG } = require("./regs");
+const url = require("url");
+const path = require("path");
+const { get: httpGet } = require("http");
+const { get: httpsGet } = require("https");
 
 exports.isRemotePath = path => path.startsWith("http");
 
@@ -44,11 +39,7 @@ exports.handleEnvironmentVariable = (value = "") => {
  * @return {String|undefined}
  */
 exports.getRemoteEnv = (remoteUrl = "", timeout = 2000) => {
-    const allowContentTypes = [ 
-        "text/env",
-        "text/html",
-        "text/plain"
-    ];
+    const isTextContentType = str => /^text\/.+/i.test(str);
     return new Promise(resolve => {
         let data = [], s, request, id, failed = false, 
             resolveUndefined = msg => {
@@ -58,7 +49,7 @@ exports.getRemoteEnv = (remoteUrl = "", timeout = 2000) => {
                 resolve();
             };
         request = ({ "http:": httpGet, "https:": httpsGet })[new url.URL(remoteUrl).protocol](remoteUrl, res => {
-            if (!allowContentTypes.includes(res.headers["content-type"])) {
+            if (!isTextContentType(res.headers["content-type"])) {
                 return resolveUndefined(remoteUrl + "的资源返回头Content-Type " + res.headers["content-type"] + "不合法！");
             }
             res.on("error", resolveUndefined);
