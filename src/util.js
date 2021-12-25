@@ -6,7 +6,7 @@ exports.partial = (f, ...args) => {
             t[index] = args[index] !== undefined ? args[index] : args1.shift();
             return t;
         }, []);
-        return f.call(this, ...params);
+        return f.call(null, ...params);
     };
     return partialReturnFunction;
 };
