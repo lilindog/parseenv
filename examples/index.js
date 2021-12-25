@@ -1,6 +1,11 @@
 const parseEnv = require("../src/main");
 
-!void async function () {
-    const r = await parseEnv("./index.env");
-    console.log(JSON.stringify(r, null, 4));
-}();
+const r = parseEnv("./index.env");
+if (r instanceof Promise) {
+    r.then(d => {
+        console.log("异步：");
+        console.log(d);
+    }).catch(console.error);
+} else {
+    console.log(r);
+}
