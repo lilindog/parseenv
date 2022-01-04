@@ -1,6 +1,6 @@
 
 /**
- * Parseenv v3.1.0
+ * Parseenv v3.2.1
  * Author lilindog<lilin@lilin.site>
  * Last-Modify 2022/1/4
  * License ISC
@@ -195,6 +195,7 @@ const getRemoteEnv = (
     }
     let timeoutId = setTimeout(() => {
         log(`"${remoteUrl}" 文件加载超时！`);
+        r.destroy();
         done("");
         clearTimeout(timeoutId);
     }, timeout);

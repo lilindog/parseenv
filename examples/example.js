@@ -16,5 +16,5 @@ function run (path) {
     }
 }
 
-// run("http://localhost/config/index.env");
-run("index.env");
+run("http://googel.com/config/index.env");
+//run("index.env");

@@ -171,6 +171,7 @@ const getRemoteEnv = (
     }
     let timeoutId = setTimeout(() => {
         log(`"${remoteUrl}" 文件加载超时！`);
+        r.destroy();
         done("");
         clearTimeout(timeoutId);
     }, timeout);
