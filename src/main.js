@@ -1,16 +1,36 @@
-import {
-    hasRemotePath,
-    isRemotePath,
-    parseEnv,
-    parseEnvAsync,
-    parseKV
-} from "./lib.js";
+import { getEnvAsync, getEnv } from "./getEnv.js";
+import getFragments from "./parseIFStatements.js";
+import { STATEMENT } from "./regs.js";
+import { parseKV2Context, hasRemotePath, isRemotePath } from "./helper.js";
 import { kConfigIsStrict } from "./constans.js";
 
-const parseAsync = async envPath => {
-    const result = await parseEnvAsync(envPath);
-    return parseKV(result.join("\n"));
-};
+function main (context = {}, envNode = {}) {
+    const fragments = getFragments(envNode);
+    for (let fragment of fragments) {
+        let fragmentContent = "";
+        if (typeof fragment === "function") {
+            fragmentContent = fragment.call(context) || "";
+        } else {
+            fragmentContent = fragment;
+        }
+        let rows = fragmentContent.match(STATEMENT) || [];
+        for (let row of rows) {
+            // include statement
+            if (row.toLocaleLowerCase().startsWith("include")) {
+                row = row.replace(/ +/g, " ");
+                const [, path] = row.split(" ");
+                const node = envNode.includes.find(node => {
+                    return node.name === path;
+                });
+                if (node) main(context, node);
+            }
+            // KV statement
+            else {
+                parseKV2Context(context, row);
+            }
+        }
+    }
+}
 
 /**
  * 入口
@@ -25,13 +45,23 @@ export default (envPath, options) => {
         const { isStrict } = options;
         global[kConfigIsStrict] = isStrict;
     }
+    const context = {};
     if (isRemotePath(envPath)) {
-        return parseAsync(envPath);
+        return getEnvAsync(envPath)
+            .then(node => {
+                main(context, node);
+                return context;
+            });
     }
     if (hasRemotePath(envPath)) {
-        return parseAsync(envPath);
+        return getEnvAsync(envPath)
+            .then(node => {
+                main(context, node);
+                return context;
+            });
     } else {
-        const result = parseEnv(envPath);
-        return parseKV(result.join("\n"));
+        const node = getEnv(envPath);
+        main(context, node);
+        return context;
     }
 };

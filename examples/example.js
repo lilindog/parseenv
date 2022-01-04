@@ -1,20 +1,21 @@
-const parseenv = require("../dist/parseenv.js");
+import parseenv from "../src/main.js";
 
 function run (path) {
-    const res = parseenv(path, {isStrict: !true});
+    const res = parseenv(path);
     if (res instanceof Promise) {
         res.then(res => {
-            console.log("ok:");
+            console.log("async:");
             console.log(res);
         })
-            .catch(err => {
-                console.log("fail:");
-                console.log(err);
-            });
+        .catch(err => {
+            console.log("fail:");
+            console.log(err);
+        });
     } else {
+        console.log("sync:");
         console.log(res);
     }
 }
 
-run("http://googel.com/config/index.env");
+run("index.env");
 //run("index.env");

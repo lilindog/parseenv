@@ -1,0 +1,260 @@
+[
+    {
+        "type": "IF",
+        "statement": "if aaa",
+        "line": 2,
+        "position": 1
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa]",
+        "line": 3,
+        "position": 8
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}]",
+        "line": 4,
+        "position": 17
+    },
+    {
+        "type": "IF",
+        "statement": "if aaa = bbb",
+        "line": 6,
+        "position": 32
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa] = bbb",
+        "line": 7,
+        "position": 45
+    },
+    {
+        "type": "IF",
+        "statement": "if bbb = [aaa]",
+        "line": 8,
+        "position": 60
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa] = [bbb]",
+        "line": 9,
+        "position": 75
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}] = aaa",
+        "line": 10,
+        "position": 92
+    },
+    {
+        "type": "IF",
+        "statement": "if aaa = [aaa{kkk}]",
+        "line": 11,
+        "position": 112
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}] = [aaa]",
+        "line": 12,
+        "position": 132
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa] = [aaa{kkk}]",
+        "line": 13,
+        "position": 154
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}] = [aaa{kkk}]",
+        "line": 14,
+        "position": 176
+    },
+    {
+        "type": "IF",
+        "statement": "if aaa != bbb",
+        "line": 16,
+        "position": 204
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa] != bbb",
+        "line": 17,
+        "position": 218
+    },
+    {
+        "type": "IF",
+        "statement": "if bbb != [aaa]",
+        "line": 18,
+        "position": 234
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa] != [bbb]",
+        "line": 19,
+        "position": 250
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}] != aaa",
+        "line": 20,
+        "position": 268
+    },
+    {
+        "type": "IF",
+        "statement": "if aaa != [aaa{kkk}]",
+        "line": 21,
+        "position": 289
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}] != [aaa]",
+        "line": 22,
+        "position": 310
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa] != [aaa{kkk}]",
+        "line": 23,
+        "position": 333
+    },
+    {
+        "type": "IF",
+        "statement": "if [aaa{kkk}] != [aaa{kkk}]",
+        "line": 24,
+        "position": 356
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if aaa = bbb",
+        "line": 27,
+        "position": 386
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa] = bbb",
+        "line": 28,
+        "position": 404
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if bbb = [aaa]",
+        "line": 29,
+        "position": 424
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa] = [bbb]",
+        "line": 30,
+        "position": 444
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa{kkk}] = aaa",
+        "line": 31,
+        "position": 466
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if aaa = [aaa{kkk}]",
+        "line": 32,
+        "position": 491
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa{kkk}] = [aaa]",
+        "line": 33,
+        "position": 516
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa] = [aaa{kkk}]",
+        "line": 34,
+        "position": 543
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa{kkk}] = [aaa{kkk}]",
+        "line": 35,
+        "position": 570
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if aaa != bbb",
+        "line": 37,
+        "position": 603
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa] != bbb",
+        "line": 38,
+        "position": 622
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if bbb != [aaa]",
+        "line": 39,
+        "position": 643
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa] != [bbb]",
+        "line": 40,
+        "position": 664
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa{kkk}] != aaa",
+        "line": 41,
+        "position": 687
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if aaa != [aaa{kkk}]",
+        "line": 42,
+        "position": 713
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa{kkk}] != [aaa]",
+        "line": 43,
+        "position": 739
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa] != [aaa{kkk}]",
+        "line": 44,
+        "position": 767
+    },
+    {
+        "type": "ELSEIF",
+        "statement": "else if [aaa{kkk}] != [aaa{kkk}]",
+        "line": 45,
+        "position": 795
+    },
+    {
+        "type": "ELSE",
+        "statement": "else",
+        "line": 47,
+        "position": 829
+    },
+    {
+        "type": "ELSE",
+        "statement": "else",
+        "line": 48,
+        "position": 838
+    },
+    {
+        "type": "ENDIF",
+        "statement": "endif",
+        "line": 49,
+        "position": 843
+    },
+    {
+        "type": "ENDIF",
+        "statement": "endif",
+        "line": 50,
+        "position": 849
+    }
+]
