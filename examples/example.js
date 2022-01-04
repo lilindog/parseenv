@@ -1,4 +1,4 @@
-import parseenv from "../src/main.js";
+const parseenv = require("../dist/parseenv.js");
 
 function run (path) {
     const res = parseenv(path, {isStrict: !true});
