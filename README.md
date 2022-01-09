@@ -4,6 +4,7 @@
 可能env文件的本意是扩展当前程序/进程的环境变量；我慢慢的习惯了把它当做一种纯粹的配置文件来使用。
 
 ## 功能
+* 支持`if else elseif`条件语句。  
 * 支持`include`语法引入本地.env配置文件。
 * 支持`include`语法引入远程.env配置文件。
 * 支持列表、字典语法。
@@ -36,6 +37,16 @@ DICT{age}  = 28
 include {comm_config}.env
 PASS = {pass}
 NAME = {name}
+
+# if else elseif表达式，该语句不可嵌套
+# 条件之间支持持=、!= 运算符，最多只支持2个条件
+if [MODE] = production
+    include production.env
+else if [MODE] = development
+    include development.env
+else 
+    include default.env
+endif
 ```
 
 ## API
