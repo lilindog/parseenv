@@ -4,7 +4,6 @@
   "description": "解析自定义后缀名为.env文件的模块",
   "main": "dist/parseenv.js",
   "types": "index.d.ts",
-  "type": "module",
   "scripts": {
     "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
