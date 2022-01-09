@@ -106,7 +106,7 @@ const getIFStatementInfo = input => {
             } 
             // insert env variable`
             else if (condition[0] === "{" && condition.slice(-1)[0] === "}") {
-                return `process?.${condition.slice(1, -1)}`;
+                return `process.env?.${condition.slice(1, -1)}`;
             } 
             // string
             else {

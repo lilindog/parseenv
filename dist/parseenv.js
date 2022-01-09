@@ -1,6 +1,6 @@
 
 /**
- * Parseenv v4.0.0-alpha
+ * Parseenv v4.0.1-alpha
  * Author lilindog<lilin@lilin.site>
  * Last-Modify 2022/1/10
  * License ISC
@@ -27,7 +27,7 @@ const start = `(?<=(?:^|\\n) *)`;
 // 语句结束
 const end = `(?= *(?:\\r\\n|\\n|$))`;
 // key声明
-const identifier = `[a-z]\\w*`;
+const identifier = `[a-z_](?:\\w|_)*`;
 // 值,不能是空格，换行、中括号、大括号
 const value = `[^\\r\\n\\ ]+`;
 // list声明
@@ -464,7 +464,7 @@ const getIFStatementInfo = input => {
             } 
             // insert env variable`
             else if (condition[0] === "{" && condition.slice(-1)[0] === "}") {
-                return `process?.${condition.slice(1, -1)}`;
+                return `process.env?.${condition.slice(1, -1)}`;
             } 
             // string
             else {

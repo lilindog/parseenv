@@ -3,7 +3,7 @@ const start = `(?<=(?:^|\\n) *)`;
 // 语句结束
 const end = `(?= *(?:\\r\\n|\\n|$))`;
 // key声明
-const identifier = `[a-z]\\w*`;
+const identifier = `[a-z_](?:\\w|_)*`;
 // 值,不能是空格，换行、中括号、大括号
 const value = `[^\\r\\n\\ ]+`;
 // list声明

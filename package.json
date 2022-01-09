@@ -1,9 +1,10 @@
 {
   "name": "parseenv",
-  "version": "4.0.0alpha",
+  "version": "4.0.1alpha",
   "description": "解析自定义后缀名为.env文件的模块",
   "main": "dist/parseenv.js",
   "types": "index.d.ts",
+  "type": "module",
   "scripts": {
     "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
