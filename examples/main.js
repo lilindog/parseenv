@@ -32,7 +32,6 @@ while (STATE !== "DONE") {
                 const howElseIf = readCharByCount(8).toLowerCase();
                 const howEndIf = readCharByCount(5).toLowerCase();
                 const howInclude = readCharByCount(7).toLowerCase();
-                console.log(howEndIf);
                 let skipLen = 0;
                 if (howIf === "if ") {
                     INDEX += 3;
@@ -61,7 +60,6 @@ while (STATE !== "DONE") {
                         // 这里也需要处理END
                     }
                 } else if (howEndIf === "endif") {
-                    console.log(">>> endif");
                     INDEX += 5;
                     skipLen = skipSpace();
                     char = input[INDEX];
@@ -280,6 +278,7 @@ while (STATE !== "DONE") {
             }
             // 使用环境变量插值
             else if (IN_ENV_INSERT) {
+                debugger;
                 if (!isLetter(char)) {
                     STATE = "";
                     break;
@@ -289,6 +288,7 @@ while (STATE !== "DONE") {
                 char = input[INDEX];
                 if (char === "}") {
                     INDEX++;
+                    IN_ENV_INSERT = false;
                     result.push({ type: "CONDITION", value: temp[0] });
                     temp = [""];
                     STATE = "CALC";
@@ -493,7 +493,8 @@ function getErrorText (text = "", position = -1) {
     }
     lastLinePreLen += preSpaceLen;
     tips += " ".repeat(lastLinePreLen) + "^\r\n";
-    tips += " ".repeat(lastLinePreLen) + "这里书写有问题\r\n";
+    tips += " ".repeat(lastLinePreLen) + "这里语法有问题\r\n";
+    tips += " ".repeat(lastLinePreLen) + "语法规则参考：https://github.com/lilindog/parseenv\r\n";
     return tips;
 }
 // 测试getErrorText
