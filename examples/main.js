@@ -30,7 +30,9 @@ while (STATE !== "DONE") {
                 const howIf = readCharByCount(3).toLowerCase();
                 const howElse = readCharByCount(4).toLowerCase();
                 const howElseIf = readCharByCount(8).toLowerCase();
-                const howEndIf = readCharByCount(6).toLowerCase();
+                const howEndIf = readCharByCount(5).toLowerCase();
+                const howInclude = readCharByCount(7).toLowerCase();
+                console.log(howEndIf);
                 let skipLen = 0;
                 if (howIf === "if ") {
                     INDEX += 3;
@@ -59,16 +61,27 @@ while (STATE !== "DONE") {
                         // 这里也需要处理END
                     }
                 } else if (howEndIf === "endif") {
-                    INDEX += 6;
+                    console.log(">>> endif");
+                    INDEX += 5;
                     skipLen = skipSpace();
                     char = input[INDEX];
                     if (char === "=") {
-                        INDEX -= (skipLen + 6);
+                        INDEX -= (skipLen + 5);
                         STATE = "KEY";
                     } else {
                         // endif 处理
                         result.push({ type: "ENDIF" });
                         STATE = "END";
+                    }
+                } else if (howInclude === "include") {
+                    skipLen = skipSpace();
+                    char = input[INDEX];
+                    if (char === "=") {
+                        INDEX -= skipLen;
+                        STATE = "KEY";
+                    } else {
+                        INDEX += 7;
+                        STATE = "VALUE";
                     }
                 } else if (char === undefined) {
                     STATE = "END";
@@ -453,7 +466,6 @@ function getErrorText (text = "", position = -1) {
             index++;
         }
     }
-    console.log(positions, lines);
     const PRE_LINE_COUNT = 2; // 带上前面多少行
     line = -1;
     index = 0;
