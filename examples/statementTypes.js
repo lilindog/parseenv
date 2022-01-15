@@ -103,7 +103,40 @@ class IfStatement extends RowBase {
      * 将条件转换为函数
      */
     convert2function () {
-
+        let preConditionCode = "";
+        let code = "";
+        this.conditions.forEach((condition, index) => {
+            // compute operator
+            if (condition instanceof Operator) {
+                const operator =
+                    condition.type === Operator.Types.EQUAL ? "===" :
+                    condition.type === Operator.Types.NO_EQUAL ? "!==" : "";
+                if (index > 1) code += ` && ${preConditionCode} ${operator} `;
+                else code += operator;
+            }
+            // condition statement
+            else {
+                switch (condition.type) {
+                    case Condition.Types.LITERAL: {
+                        preConditionCode = isNaN(Number(condition.field)) ? ` "${condition.field}" ` : ` ${condition.field} `;
+                        code += preConditionCode;
+                        break;
+                    }
+                    case Condition.Types.USE_ENV: {
+                        preConditionCode = ` process?.${condition.field} `;
+                        code += preConditionCode;
+                        break;
+                    }
+                    case Condition.Types.USE_VARIABLE: {
+                        preConditionCode = ` this?.${condition.field}`;
+                        if (condition.property) preConditionCode += `?.${condition.property}`;
+                        code += preConditionCode;
+                        break;
+                    }
+                }
+            }
+        });
+        return new Function ("return " + code + ";");
     }
 }
 

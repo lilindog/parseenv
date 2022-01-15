@@ -389,11 +389,12 @@ while (STATE !== "DONE") {
 
 // debug start =================================
 console.log(STATE, INDEX);
-// console.log(result);
-const conditionStatements = result.filter(i => i instanceof IfStatement || i instanceof ElseIfStatement);
-conditionStatements.forEach(i => {
-    console.log(i.conditions);
-});
+console.log(result);
+// const conditionStatements = result.filter(i => i instanceof IfStatement || i instanceof ElseIfStatement);
+// conditionStatements.forEach(i => {
+//     console.log(i.convert2function().toString());
+// });
+
 // debug end   =================================
 
 function readCharByCount (count) {
