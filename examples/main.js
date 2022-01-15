@@ -21,7 +21,7 @@ let IN_LIST = false;
 let IN_MAP = false;
 let IN_USE_VARIABLE = false;
 let IN_ENV_INSERT = false;
-let IN_USER_VARIABLE_MAP = false;
+let IN_USE_VARIABLE_MAP = false;
 const result = [];
 let statement = null;
 
@@ -32,7 +32,6 @@ while (STATE !== "DONE") {
          * 左侧语句，注释、key声明
          */
         case "START": {
-            temp = [""];
             skipSpaceAndCRLF();
             char = input[INDEX];
             if (char === "#") {
@@ -247,7 +246,7 @@ while (STATE !== "DONE") {
             skipSpace();
             char = input[INDEX];
             // 使用声明变量中的map字段
-            if (IN_USER_VARIABLE_MAP) {
+            if (IN_USE_VARIABLE_MAP) {
                 if (!isLetter(char)) {
                     STATE = "";
                     break;
@@ -256,10 +255,17 @@ while (STATE !== "DONE") {
                 statement.lastCondition.property = s;
                 char = input[INDEX];
                 // use variable map end
-                if (char === "}") {
+                if (char !== "}") {
+                    STATE = "";
+                    break;
+                }
+                INDEX++;
+                char = input[INDEX];
+                if (char === "]") {
                     INDEX++;
-                    IN_USER_VARIABLE_MAP = false;
-                    append();
+                    IN_USE_VARIABLE_MAP = false;
+                    IN_USE_VARIABLE = false;
+                    STATE = "CALC";
                 } else {
                     STATE = "";
                 }
@@ -281,7 +287,8 @@ while (STATE !== "DONE") {
                 }
                 // use variable map 开始
                 else if (char === "{") {
-                    IN_USER_VARIABLE_MAP = true;
+                    debugger;
+                    IN_USE_VARIABLE_MAP = true;
                     INDEX++;
                 } else {
                     STATE = "";
@@ -294,7 +301,7 @@ while (STATE !== "DONE") {
                     break;
                 }
                 const s = readIdentifier();
-                if (s) append(s);
+                statement.lastCondition.field = s;
                 char = input[INDEX];
                 if (char === "}") {
                     INDEX++;
@@ -379,8 +386,15 @@ while (STATE !== "DONE") {
     }
 }
 
+
+// debug start =================================
 console.log(STATE, INDEX);
-console.log(result);
+// console.log(result);
+const conditionStatements = result.filter(i => i instanceof IfStatement || i instanceof ElseIfStatement);
+conditionStatements.forEach(i => {
+    console.log(i.conditions);
+});
+// debug end   =================================
 
 function readCharByCount (count) {
     return input.slice(INDEX, INDEX + count);
