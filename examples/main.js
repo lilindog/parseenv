@@ -3,16 +3,27 @@ const input = fs.readFileSync("test.env").toString("utf8");
 console.log(input.split("").map((i, index) => `(${index}) -> ${i}`));
 // 接下来接着解决if else 语句解析问题
 
+const {
+    KVStatement,
+    IfStatement,
+    ElseIfStatement,
+    ElseStatement,
+    EndifStatement,
+    Condition,
+    Operator,
+    IncludeStatement,
+    CommentStatement
+} = require("./statementTypes");
+
 let INDEX = 0;
-let STATE = "START"; // identifier、value、equa、
+let STATE = "START"; // START\KEY\VALUE\CONDITION\EQUA\COMMENT\END\DONE\CALC
 let IN_LIST = false;
 let IN_MAP = false;
 let IN_USE_VARIABLE = false;
 let IN_ENV_INSERT = false;
-let IN_USER_VARABLE_MAP = false;
+let IN_USER_VARIABLE_MAP = false;
 const result = [];
-let row = [];
-let temp = [];
+let statement = null;
 
 while (STATE !== "DONE") {
     let char = input[INDEX];
@@ -26,6 +37,7 @@ while (STATE !== "DONE") {
             char = input[INDEX];
             if (char === "#") {
                 STATE = "COMMENT";
+                statement = new CommentStatement;
             } else {
                 const howIf = readCharByCount(3).toLowerCase();
                 const howElse = readCharByCount(4).toLowerCase();
@@ -40,12 +52,15 @@ while (STATE !== "DONE") {
                     if (char === "=") {
                         STATE = "KEY";
                         INDEX -= (skipLen + 3);
+                        statement = new KVStatement;
                     } else {
+                        statement = new IfStatement;
                         STATE = "CONDITION";
                     }
                 } else if (howElseIf === "else if ") {
                     INDEX += 8;
                     STATE = "CONDITION";
+                    statement = new ElseIfStatement;
                 } else if (howElse === "else") {
                     INDEX += 4;
                     skipLen = skipSpace();
@@ -53,11 +68,10 @@ while (STATE !== "DONE") {
                     if (char === "=") {
                         STATE = "KEY";
                         INDEX -= (skipLen + 4);
+                        statement = new KVStatement;
                     } else {
-                        // else 处理
-                        result.push({ type: "ELSE" });
+                        statement = new ElseStatement;
                         STATE = "END";
-                        // 这里也需要处理END
                     }
                 } else if (howEndIf === "endif") {
                     INDEX += 5;
@@ -66,9 +80,9 @@ while (STATE !== "DONE") {
                     if (char === "=") {
                         INDEX -= (skipLen + 5);
                         STATE = "KEY";
+                        statement = new KVStatement;
                     } else {
-                        // endif 处理
-                        result.push({ type: "ENDIF" });
+                        statement = new EndifStatement;
                         STATE = "END";
                     }
                 } else if (howInclude === "include") {
@@ -77,14 +91,17 @@ while (STATE !== "DONE") {
                     if (char === "=") {
                         INDEX -= skipLen;
                         STATE = "KEY";
+                        statement = new KVStatement;
                     } else {
                         INDEX += 7;
                         STATE = "VALUE";
+                        statement = new IncludeStatement;
                     }
                 } else if (char === undefined) {
                     STATE = "END";
                 } else {
                     STATE = "KEY";
+                    statement = new KVStatement;
                 }
             }
             break;
@@ -100,8 +117,10 @@ while (STATE !== "DONE") {
                 // 此处可以用于处理一行语句的结果生成，这里暂时跳过
                 skipSpaceAndCRLF();
                 STATE = "START";
+                append();
             } else if (char === undefined) {
                 STATE = "DONE";
+                append();
             } else {
                 STATE = "";
             }
@@ -112,18 +131,17 @@ while (STATE !== "DONE") {
          * 注释
          */
         case "COMMENT": {
-            temp = [""];
+            let s = "";
             while (INDEX < input.length) {
                 char = input[INDEX];
                 if (isCRLF(char)) {
                     break;
                 } else {
-                    append(char);
+                    s += char;
                     INDEX++;
                 }
             }
-            result.push({ type: "COMMENT", value: temp[0] });
-            temp = [];
+            statement.value = s;
             STATE = "END";
             break;
         }
@@ -135,8 +153,6 @@ while (STATE !== "DONE") {
         case "KEY": {
             if (IN_LIST) {
                 if (char === "]") {
-                    result.push({ type: "LIST", field: temp[0] });
-                    temp = [""];
                     INDEX++;
                     IN_LIST = false;
                     STATE = "EQUA";
@@ -146,16 +162,17 @@ while (STATE !== "DONE") {
             } else if (!isLetter(char)) {
                 STATE = "";
             } else {
-                if (!temp.length) temp = [""];
-                append(char);
-                INDEX++;
                 const s = readIdentifier();
-                if (s) append(s);
+                if (s) {
+                    if (statement.type === KVStatement.Types.MAP) {
+                        statement.property = s;
+                    } else {
+                        statement.field = s;
+                    }
+                }
                 char = input[INDEX];
                 if (IN_MAP) {
                     if (char === "}") {
-                        result.push({ type: "MAP", field: temp[0], property: temp[1] });
-                        temp = [""];
                         IN_MAP = false;
                         INDEX++;
                         STATE = "EQUA";
@@ -164,16 +181,15 @@ while (STATE !== "DONE") {
                     }
                 } else {
                     if (char === "[") {
-                        temp.push("");
+                        statement.type = KVStatement.Types.LIST;
                         INDEX++;
                         IN_LIST = true;
                     } else if (char === "{") {
-                        temp.push("");
+                        statement.type = KVStatement.Types.MAP;
                         INDEX++;
                         IN_MAP = true;
                     } else if (isSpace(char) || char === "=") {
-                        result.push({ type: "KEY", field: temp[0] });
-                        temp = [""];
+                        statement.type = KVStatement.Types.KEY;
                         STATE = "EQUA";
                     } else {
                         STATE = "";
@@ -190,7 +206,6 @@ while (STATE !== "DONE") {
             skipSpace();
             char = input[INDEX];
             if (char === "=") {
-                result.push({ type: "EQUA" });
                 INDEX++;
                 STATE = "VALUE";
             } else {
@@ -205,19 +220,18 @@ while (STATE !== "DONE") {
          */
         case "VALUE": {
             skipSpace();
-            temp = [""];
+            let s = "";
             while (INDEX < input.length) {
                 char = input[INDEX];
                 if (isSpace(char) || isCRLF(char)) {
                     break;
                 } else {
-                    append(char);
+                    s += char;
                     INDEX++;
                 }
             }
-            if (temp[0]) {
-                result.push({ type: "VALUE", value: temp[0] });
-                temp = [""];
+            if (s) {
+                statement.value = s;
                 STATE = "END";
             } else {
                 STATE = "";
@@ -233,18 +247,19 @@ while (STATE !== "DONE") {
             skipSpace();
             char = input[INDEX];
             // 使用声明变量中的map字段
-            if (IN_USER_VARABLE_MAP) {
+            if (IN_USER_VARIABLE_MAP) {
                 if (!isLetter(char)) {
                     STATE = "";
                     break;
                 }
                 const s = readIdentifier();
-                if (s) append(s);
+                statement.lastCondition.property = s;
                 char = input[INDEX];
-                // use variable map 结束
+                // use variable map end
                 if (char === "}") {
                     INDEX++;
-                    IN_USER_VARABLE_MAP = false;
+                    IN_USER_VARIABLE_MAP = false;
+                    append();
                 } else {
                     STATE = "";
                 }
@@ -255,22 +270,18 @@ while (STATE !== "DONE") {
                     STATE = "";
                     break;
                 }
-                append(char);
-                INDEX++;
                 const s = readIdentifier();
-                if (s) append(s);
+                statement.lastCondition.field = s;
                 char = input[INDEX];
                 // use variable结束
                 if (char === "]") {
                     IN_USE_VARIABLE = false;
                     INDEX++;
-                    result.push({ type: "CONDITION", value: temp[0] });
-                    temp = [""];
                     STATE = "CALC";
                 }
                 // use variable map 开始
                 else if (char === "{") {
-                    IN_USER_VARABLE_MAP = true;
+                    IN_USER_VARIABLE_MAP = true;
                     INDEX++;
                 } else {
                     STATE = "";
@@ -278,7 +289,6 @@ while (STATE !== "DONE") {
             }
             // 使用环境变量插值
             else if (IN_ENV_INSERT) {
-                debugger;
                 if (!isLetter(char)) {
                     STATE = "";
                     break;
@@ -289,8 +299,6 @@ while (STATE !== "DONE") {
                 if (char === "}") {
                     INDEX++;
                     IN_ENV_INSERT = false;
-                    result.push({ type: "CONDITION", value: temp[0] });
-                    temp = [""];
                     STATE = "CALC";
                 } else {
                     STATE = "";
@@ -298,26 +306,33 @@ while (STATE !== "DONE") {
             }
             // 字面量
             else {
-                temp = [""];
                 // 字面量, 允许数字开头
                 if (isLetter(char) || isNumber(char)) {
-                    append(char);
-                    INDEX++;
                     const s = readIdentifier();
-                    if (s) append(s);
-                    result.push({ type: "CONDITION", value: temp[0] });
-                    temp = [""];
+                    const condition = new Condition({
+                        type: Condition.Types.LITERAL,
+                        field: s
+                    });
+                    statement.conditions.push(condition);
                     STATE = "CALC";
                 }
                 // use variable start
                 else if (char === "[") {
                     INDEX++;
                     IN_USE_VARIABLE = true;
+                    const condition = new Condition({
+                        type: Condition.Types.USE_VARIABLE
+                    });
+                    statement.conditions.push(condition);
                 }
                 // use envvariable start
                 else if (char === "{") {
                     INDEX++;
                     IN_ENV_INSERT = true;
+                    const condition = new Condition({
+                        type: Condition.Types.USE_ENV
+                    });
+                    statement.conditions.push(condition);
                 } else {
                     STATE = "";
                 }
@@ -332,15 +347,19 @@ while (STATE !== "DONE") {
             skipSpace();
             char = input[INDEX];
             if (char === "=") {
-                result.push({ type: "CONDITION", value: char });
                 INDEX++;
                 STATE = "CONDITION";
+                statement.conditions.push(
+                    new Operator({ type: Operator.Types.EQUAL })
+                );
             } else if (char === "!") {
                 const next = readCharByCount(2);
                 if (next === "!=") {
-                    result.push({ type: "CONDITION", value: next });
                     INDEX += 2;
                     STATE = "CONDITION";
+                    statement.conditions.push(
+                        new Operator({ type: Operator.Types.NO_EQUAL })
+                    );
                 } else {
                     STATE = "";
                 }
@@ -381,8 +400,10 @@ function readIdentifier () {
     return s;
 }
 
-function append (char = "") {
-    temp[temp.length - 1] += char;
+function append () {
+    if (!statement) return;
+    result.push(statement);
+    statement = undefined;
 }
 
 function isSpace (char) {
