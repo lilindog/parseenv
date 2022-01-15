@@ -22,6 +22,7 @@ let IN_MAP = false;
 let IN_USE_VARIABLE = false;
 let IN_ENV_INSERT = false;
 let IN_USE_VARIABLE_MAP = false;
+let IN_VALUE_ENV_INSERT = false;
 const result = [];
 let statement = null;
 
@@ -42,7 +43,7 @@ while (STATE !== "DONE") {
                 const howElse = readCharByCount(4).toLowerCase();
                 const howElseIf = readCharByCount(8).toLowerCase();
                 const howEndIf = readCharByCount(5).toLowerCase();
-                const howInclude = readCharByCount(7).toLowerCase();
+                const howInclude = readCharByCount(8).toLowerCase();
                 let skipLen = 0;
                 if (howIf === "if ") {
                     INDEX += 3;
@@ -84,15 +85,15 @@ while (STATE !== "DONE") {
                         statement = new EndifStatement;
                         STATE = "END";
                     }
-                } else if (howInclude === "include") {
+                } else if (howInclude === "include ") {
+                    INDEX += 8;
                     skipLen = skipSpace();
                     char = input[INDEX];
                     if (char === "=") {
-                        INDEX -= skipLen;
+                        INDEX -= (skipLen + 8);
                         STATE = "KEY";
                         statement = new KVStatement;
                     } else {
-                        INDEX += 7;
                         STATE = "VALUE";
                         statement = new IncludeStatement;
                     }
@@ -218,22 +219,55 @@ while (STATE !== "DONE") {
          * 需要注意环境变量插值
          */
         case "VALUE": {
-            skipSpace();
-            let s = "";
-            while (INDEX < input.length) {
-                char = input[INDEX];
-                if (isSpace(char) || isCRLF(char)) {
+            /**
+             * 暂时对value里的env insert 只做语法检测
+             * 不做解析处理，在statement类型里边做解析处理
+             */
+            if (IN_VALUE_ENV_INSERT) {
+                if (!isLetter(char)) {
+                    STATE = "";
                     break;
-                } else {
-                    s += char;
-                    INDEX++;
                 }
-            }
-            if (s) {
-                statement.value = s;
-                STATE = "END";
+                const s = readIdentifier();
+                console.log("value env insert: " + s);
+                statement.value += s;
+                char = input[INDEX];
+                if (char !== "}") {
+                    STATE = "";
+                    break;
+                }
+                statement.value += "}";
+                INDEX++;
+                IN_VALUE_ENV_INSERT = false;
             } else {
-                STATE = "";
+                skipSpace();
+                let s = "";
+                while (INDEX < input.length) {
+                    char = input[INDEX];
+                    if (
+                        isSpace(char) || isCRLF(char) ||
+                        (char === "{" && input[INDEX - 1] !== "\\") ||
+                        // 不需要处理“}”, 仅当检测到未转义符的“}”时让出，好让后续逻辑抛错！
+                        (char === "}" && input[INDEX - 1] !== "\\")
+                    ) {
+                        break;
+                    } else {
+                        s += char;
+                        INDEX++;
+                    }
+                }
+                char = input[INDEX];
+                if (char === "{") {
+                    statement.value += s + "{";
+                    INDEX++;
+                    IN_VALUE_ENV_INSERT = true;
+                } else if (s || statement.value) { // 本意本来不让statement参与判断，这里我不愿定义其它flag变量，暂时先这样了！
+                    statement.value += s || "";
+                    console.log(statement.value);
+                    STATE = "END";
+                } else {
+                    STATE = "";
+                }
             }
             break;
         }
