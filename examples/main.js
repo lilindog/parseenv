@@ -229,7 +229,6 @@ while (STATE !== "DONE") {
                     break;
                 }
                 const s = readIdentifier();
-                console.log("value env insert: " + s);
                 statement.value += s;
                 char = input[INDEX];
                 if (char !== "}") {
@@ -263,7 +262,6 @@ while (STATE !== "DONE") {
                     IN_VALUE_ENV_INSERT = true;
                 } else if (s || statement.value) { // 本意本来不让statement参与判断，这里我不愿定义其它flag变量，暂时先这样了！
                     statement.value += s || "";
-                    console.log(statement.value);
                     STATE = "END";
                 } else {
                     STATE = "";
@@ -423,11 +421,11 @@ while (STATE !== "DONE") {
 
 // debug start =================================
 console.log(STATE, INDEX);
-console.log(result);
-// const conditionStatements = result.filter(i => i instanceof IfStatement || i instanceof ElseIfStatement);
-// conditionStatements.forEach(i => {
-//     console.log(i.convert2function().toString());
-// });
+// console.log(result);
+const conditionStatements = result.filter(i => i instanceof IncludeStatement || i instanceof KVStatement);
+conditionStatements.forEach(i => {
+    console.log(">>> " + i.getValue());
+});
 
 // debug end   =================================
 
@@ -502,7 +500,6 @@ function skipSpaceAndCRLF () {
 }
 
 function getErrorText (text = "", position = -1) {
-    console.log(position);
     text = text || input;
     const lines = [/* "xxxx\n", "xxxx\n", ... */];
     const positions = [/* [1,2,3,4], ... */];
@@ -563,8 +560,8 @@ function getErrorText (text = "", position = -1) {
     }
     lastLinePreLen += preSpaceLen;
     tips += " ".repeat(lastLinePreLen) + "^\r\n";
-    tips += " ".repeat(lastLinePreLen) + "这里语法有问题\r\n";
-    tips += " ".repeat(lastLinePreLen) + "语法规则参考：https://github.com/lilindog/parseenv\r\n";
+    tips += " ".repeat(lastLinePreLen) + "grammar problems!\r\n";
+    tips += " ".repeat(lastLinePreLen) + "grammar rules reference：https://github.com/lilindog/parseenv\r\n";
     return tips;
 }
 // 测试getErrorText

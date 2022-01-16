@@ -1,4 +1,39 @@
 /**
+ * handle value env insert
+ *
+ * @return {String}
+ */
+function handleValue () {
+    let value = this.value;
+    let insert_letter = "";
+    let index = 0;
+    const results = [];
+    while (index < value.length) {
+        const char = value[index];
+        if (insert_letter) {
+            if (char === "}" && value[index - 1] !== "\\") {
+                insert_letter += "}";
+                results.push(insert_letter);
+                insert_letter = "";
+            } else {
+                insert_letter += char;
+            }
+        } else {
+            if (char === "{" && value[index - 1] !== "\\") {
+                insert_letter = "{";
+            }
+        }
+        index++;
+    }
+    results.forEach(key => {
+        let field = key.slice(1, -1);
+        field = process.env?.[field] ? String(process.env?.[field]) : "NONE";
+        value = value.replace(key, field);
+    });
+    return value;
+}
+
+/**
  * rowType base class
  *
  * @private
@@ -28,11 +63,14 @@ class KVStatement extends RowBase {
         field: "",
         property: "", // Type == MAP 才有
         value: ""
-        // value: "[object Function]", // value函数，主要处理环境和变量插值，若没有直接返回value
     };
 
     constructor (props) {
         super(props);
+    }
+
+    getValue () {
+        return handleValue.call(this);
     }
 }
 
@@ -188,6 +226,10 @@ class IncludeStatement extends RowBase {
 
     constructor (props) {
         super(props);
+    }
+
+    getValue () {
+        return handleValue.call(this);
     }
 }
 
