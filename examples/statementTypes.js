@@ -39,8 +39,15 @@ function handleValue () {
  * @private
  */
 class RowBase {
+    static Fields = {
+        // statement 起始位置
+        position: -1
+    };
+
     constructor (options = {}) {
-        const Fields = JSON.parse(JSON.stringify(new.target.Fields));
+        const Fields = JSON.parse(JSON.stringify(
+            Object.assign({}, RowBase.Fields, new.target.Fields)
+        ));
         Reflect.ownKeys(Fields).forEach(k => this[k] = options[k] !== undefined ? options[k] : Fields[k]);
     }
 }
