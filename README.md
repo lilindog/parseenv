@@ -4,7 +4,7 @@
 
 ## 🔔 注意
 条件语句解析生成的运算函数内部使用了可选链运算符，node版本需>=14。      
-建议安装标签为release的版本, 如：`npm install --save-dev https://github.com/lilindog/parseenv#release`。        
+建议安装标签为release的版本, 如：`npm install --save-dev git+https://github.com/lilindog/parseenv#release`。        
 
 
 ## ⚡ 功能
