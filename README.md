@@ -1,6 +1,11 @@
 # parseenv
-![](https://img.shields.io/badge/node--version->=14.0.0-orange?logo=nodedotjs&style=for-the-badge)  
+
 这是一个.env文件解析器，它兼容dotenv的语法格式。
+
+## 🔔 注意
+> 条件语句解析生成的运算函数内部使用了可选链运算符，node版本需>=14。    
+> 建议安装标签为release的版本, 如：`npm install --save-dev https://github.com/lilindog/parseenv#release`。     
+
 
 ## ⚡ 功能
 除了兼容dotenv的语法外，它增加了以下语法：   
