@@ -1,6 +1,6 @@
 # parseenv语法规则
 
-除了支出dotenv的语法，parseenv新增了一些语法。   
+除了支持dotenv的语法，parseenv新增了一些语法。   
 
 ## 👋 include
 引入其他env文件，可以是本地也可以是远程。   
