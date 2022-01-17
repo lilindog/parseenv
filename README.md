@@ -1,4 +1,5 @@
 # parseenv
+![](https://img.shields.io/badge/node--version->=14.0.0-orange?logo=nodedotjs&style=for-the-badge)  
 这是一个.env文件解析器，它兼容dotenv的语法格式。
 
 ## ⚡ 功能
