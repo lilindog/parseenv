@@ -1,15 +1,17 @@
 {
   "name": "parseenv",
-  "version": "4.0.1alpha",
+  "version": "4.1.0",
   "description": "解析自定义后缀名为.env文件的模块",
   "main": "dist/parseenv.js",
-  "types": "index.d.ts",
   "scripts": {
     "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
     "lint": "eslint src/",
     "build": "rollup --config rollup.config.js",
     "dev": "rollup --config rollup.config.js -w src/"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   },
   "repository": {
     "type": "git",

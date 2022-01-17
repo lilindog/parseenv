@@ -1,4 +1,4 @@
-const parseenv = require("../dist/parseenv");
+import parseenv from "../src/main.js";
 
 function run (path) {
     const res = parseenv(path);
@@ -18,4 +18,3 @@ function run (path) {
 }
 
 run("index.env");
-//run("index.env");

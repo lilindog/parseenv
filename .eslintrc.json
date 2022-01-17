@@ -12,7 +12,8 @@
         // 缩进使用4个空格， 而非tab
         "indent": [
             "error",
-            4
+            4,
+            { "SwitchCase": 1 }
         ],
         // 仅使用双引号和反引号
         "quotes": [

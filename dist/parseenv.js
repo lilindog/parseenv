@@ -1,8 +1,8 @@
 
 /**
- * Parseenv v4.0.1-alpha
+ * Parseenv v4.1.0
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2022/1/10
+ * Last-Modify 2022/1/18
  * License ISC
  */
 
@@ -22,41 +22,913 @@ var url__default = /*#__PURE__*/_interopDefaultLegacy(url);
 var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
 var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
 
-// 语句开始
-const start = `(?<=(?:^|\\n) *)`;
-// 语句结束
-const end = `(?= *(?:\\r\\n|\\n|$))`;
-// key声明
-const identifier = `[a-z_](?:\\w|_)*`;
-// 值,不能是空格，换行、中括号、大括号
-const value = `[^\\r\\n\\ ]+`;
-// list声明
-const list = `${identifier}\\[\\]`;
-// map语法检测
-const map = `${identifier}\\{${identifier}\\}`;
-// if语句的等于与不等于
-const equa = `(?:=|!=)`;
-// if语句使用变量
-const usevariable = `\\[(?:${identifier}|${map})\\]`;
-// 环境变量插值
-const envinsert = `\\{${identifier}\\}`;
-// if条件单元
-const ifcondition = `(?:${usevariable}|${envinsert}|[^\\[\\]\\{\\}\\r\\n ]+)`;
-// if和else if语句
-const ifelseif = `${start}(?:if|else *if) *?${ifcondition}(?: *${equa} *${ifcondition})?${end}`;
-// if 条件语句包括（if else if else endif）
-const if_elseif_else_endif = `(?:${ifelseif}|${start}else${end}|${start}endif${end})`;
-const KVStatement = `${start}(?:${identifier}|${map}|${list}) *= *${value}${end}`;
-const includeStatement = `${start}include *${value}${end}`;
-
-const IF_STATEMENT = new RegExp(if_elseif_else_endif, "ig");
-const ONE_IF_CONDITION = new RegExp(`^(?:if|else *if) +?(${ifcondition})$`, "ig");
-const TWO_IF_CONDITION = new RegExp(`^(?:if|else *if) +?(${ifcondition}) *(${equa}) *(${ifcondition})$`, "ig");
-const STATEMENT = new RegExp(`(?:${KVStatement}|${includeStatement})`, "ig");
-const INCLUDE_REG = new RegExp(includeStatement, "ig");
-const ENV_INJECTION = /(?<!\\)\{([^\}]+)\}(?!\\)/ig;
-
 const kConfigIsStrict = Symbol("k_config_is_strict");
+
+/**
+ * handle value env insert
+ *
+ * @return {String}
+ * @private
+ */
+function handleValue () {
+    let value = this.value;
+    let insert_letter = "";
+    let index = 0;
+    const results = [];
+    while (index < value.length) {
+        const char = value[index];
+        if (insert_letter) {
+            if (char === "}" && value[index - 1] !== "\\") {
+                insert_letter += "}";
+                results.push(insert_letter);
+                insert_letter = "";
+            } else {
+                insert_letter += char;
+            }
+        } else {
+            if (char === "{" && value[index - 1] !== "\\") {
+                insert_letter = "{";
+            }
+        }
+        index++;
+    }
+    results.forEach(key => {
+        let field = key.slice(1, -1);
+        field = process.env?.[field] ? String(process.env?.[field]) : "NONE";
+        value = value.replace(key, field);
+    });
+    // "123" -> Number or "123c" -> String
+    value = isNaN(Number(value)) ? value : Number(value);
+    return value;
+}
+
+/**
+ * rowType base class
+ *
+ * @private
+ */
+class RowBase {
+    static Fields = {
+        // statement 起始位置
+        position: -1
+    };
+
+    constructor (options = {}) {
+        const Fields = JSON.parse(JSON.stringify(
+            Object.assign({}, RowBase.Fields, new.target.Fields)
+        ));
+        Reflect.ownKeys(Fields).forEach(k => this[k] = options[k] !== undefined ? options[k] : Fields[k]);
+    }
+}
+
+/**
+ * key - value
+ *
+ * @public
+ */
+class KVStatement extends RowBase {
+    static Types = {
+        KEY: "KEY",
+        LIST: "LIST",
+        MAP: "MAP",
+        DEFAULT: "DEFAULT" // 未指定
+    };
+
+    static Fields = {
+        type: KVStatement.Types.DEFAULT,
+        field: "",
+        property: "", // Type == MAP 才有
+        value: ""
+    };
+
+    constructor (props) {
+        super(props);
+    }
+
+    getValue () {
+        return handleValue.call(this);
+    }
+}
+
+/**
+ * operater
+ *
+ * @public
+ */
+class Operator extends RowBase {
+    static Types = {
+        EQUAL: "EQUAL",
+        NO_EQUAL: "NO_EQUAL",
+        DEFAULT: "DEFAULT"
+    };
+
+    static Fields = {
+        type: Operator.Types.DEFAULT
+    } ;
+
+    constructor (props) {
+        super(props);
+    }
+}
+
+/**
+ * condition
+ *
+ * @public
+ */
+class Condition extends RowBase {
+    static Types = {
+        LITERAL: "LITERAL",
+        USE_VARIABLE: "USE_VARIABLE",
+        USE_ENV: "USE_ENV",
+        DEFAULT: "DEFAULT"
+    };
+
+    static Fields = {
+        type: Condition.Types.DEFAULT,
+        field: "",
+        property: "" // 使用变量map时才需要指定该字段
+    };
+
+    constructor (props) {
+        super(props);
+    }
+}
+
+/**
+ * if statement
+ *
+ * @public
+ */
+class IfStatement extends RowBase {
+    static Fields = {
+        conditions: []
+    };
+
+    constructor (props) {
+        super(props);
+    }
+
+    get lastCondition () {
+        return this.conditions[this.conditions.length - 1];
+    }
+
+    /**
+     * 将条件转换为函数
+     */
+    convert2function () {
+        let preConditionCode = "";
+        let code = "";
+        this.conditions.forEach((condition, index) => {
+            // compute operator
+            if (condition instanceof Operator) {
+                const operator =
+                    condition.type === Operator.Types.EQUAL ? "===" :
+                        condition.type === Operator.Types.NO_EQUAL ? "!==" :
+                            "";
+                if (index > 1) code += ` && ${preConditionCode} ${operator} `;
+                else code += operator;
+            }
+            // condition statement
+            else {
+                switch (condition.type) {
+                    case Condition.Types.LITERAL: {
+                        preConditionCode = isNaN(Number(condition.field)) ? ` "${condition.field}" ` : ` ${condition.field} `;
+                        code += preConditionCode;
+                        break;
+                    }
+                    case Condition.Types.USE_ENV: {
+                        preConditionCode = ` process?.${condition.field} `;
+                        code += preConditionCode;
+                        break;
+                    }
+                    case Condition.Types.USE_VARIABLE: {
+                        preConditionCode = ` this?.${condition.field}`;
+                        if (condition.property) preConditionCode += `?.${condition.property}`;
+                        code += preConditionCode;
+                        break;
+                    }
+                }
+            }
+        });
+        return new Function ("return " + code + ";");
+    }
+}
+
+/**
+ * else if statement
+ *
+ * @public
+ */
+class ElseIfStatement extends IfStatement {
+    static Fields = Object.assign({}, IfStatement.Fields);
+    constructor (props) {
+        super(props);
+    }
+}
+
+/**
+ * else
+ *
+ * @public
+ */
+class ElseStatement extends RowBase {
+    static Fields = {};
+    constructor (props) {
+        super(props);
+    }
+}
+
+/**
+ * endif
+ *
+ * @public
+ */
+class EndifStatement extends RowBase {
+    static Fields = {};
+    constructor (props) {
+        super(props);
+    }
+}
+
+/**
+ * include statement
+ *
+ * @public
+ */
+class IncludeStatement extends RowBase {
+    static Fields = {
+        value: "" // 可以换为编译好的函数处理环境变量插值后返回真正的值
+    };
+
+    constructor (props) {
+        super(props);
+    }
+
+    getValue () {
+        return handleValue.call(this);
+    }
+}
+
+/**
+ * comment statement
+ *
+ * @public
+ */
+class CommentStatement extends RowBase {
+    static Fields = {
+        value: ""
+    };
+
+    constructor (props) {
+        super(props);
+    }
+}
+
+let INDEX = 0;
+let result = [];
+let statement = null;
+let input = "";
+let ERR_MSG = "";
+
+/**
+ * parse env string content to statement
+ *
+ * @param input {String}
+ * @returns {RowBase[]}
+ * @public
+ */
+function parse (content = "") {
+    input = content;
+
+    let STATE = "START"; // START\KEY\VALUE\CONDITION\EQUA\COMMENT\END\DONE\CALC
+    let IN_LIST = false;
+    let IN_MAP = false;
+    let IN_USE_VARIABLE = false;
+    let IN_ENV_INSERT = false;
+    let IN_USE_VARIABLE_MAP = false;
+    let IN_VALUE_ENV_INSERT = false;
+    let pre_condition_statement = null;
+
+    while (STATE !== "DONE") {
+        let char = input[INDEX];
+        switch (STATE) {
+
+            case "START": {
+                skipSpaceAndCRLF();
+                char = input[INDEX];
+                if (char === "#") {
+                    STATE = "COMMENT";
+                    statement = new CommentStatement({ position: INDEX });
+                    break;
+                }
+
+                const howIf = readCharByCount(3).toLowerCase();
+                const howElse = readCharByCount(4).toLowerCase();
+                const howElseIf = readCharByCount(8).toLowerCase();
+                const howEndIf = readCharByCount(5).toLowerCase();
+                const howInclude = readCharByCount(8).toLowerCase();
+                let skipLen = 0;
+                if (howIf === "if ") {
+                    INDEX += 3;
+                    skipLen = skipSpace();
+                    char = input[INDEX];
+                    if (char === "=") {
+                        STATE = "KEY";
+                    } else {
+                        STATE = "IF";
+                    }
+                    INDEX -= (skipLen + 3);
+                } else if (howElseIf === "else if ") {
+                    STATE = "ELSEIF";
+                } else if (howElse === "else") {
+                    INDEX += 4;
+                    skipLen = skipSpace();
+                    char = input[INDEX];
+                    INDEX -= (skipLen + 4);
+                    if (char === "=") {
+                        STATE = "KEY";
+                    } else {
+                        STATE = "ELSE";
+                    }
+                } else if (howEndIf === "endif") {
+                    INDEX += 5;
+                    skipLen = skipSpace();
+                    char = input[INDEX];
+                    INDEX -= (skipLen + 5);
+                    if (char === "=") {
+                        STATE = "KEY";
+                    } else {
+                        STATE = "ENDIF";
+                    }
+                } else if (howInclude === "include ") {
+                    INDEX += 8;
+                    skipLen = skipSpace();
+                    char = input[INDEX];
+                    if (char === "=") {
+                        INDEX -= (skipLen + 8);
+                        STATE = "KEY";
+                    } else {
+                        STATE = "VALUE";
+                        statement = new IncludeStatement({ position: INDEX - (skipLen + 8) });
+                    }
+                } else if (char === undefined) {
+                    STATE = "END";
+                } else {
+                    STATE = "KEY";
+                }
+                break;
+            }
+
+            case "IF": {
+                if (
+                    pre_condition_statement &&
+                    !(pre_condition_statement instanceof EndifStatement)
+                ) {
+                    ERR_MSG = "if 语句不应该出现在此处";
+                    STATE = "";
+                    break;
+                }
+                pre_condition_statement = statement = new IfStatement({ position: INDEX });
+                const s = readIdentifier();
+                if (s !== "if") {
+                    STATE = "";
+                    break;
+                }
+                STATE = "CONDITION";
+                break;
+            }
+
+            case "ELSEIF": {
+                if (
+                    !pre_condition_statement ||
+                    (
+                        !(pre_condition_statement instanceof ElseIfStatement) &&
+                        !(pre_condition_statement instanceof IfStatement)
+                    )
+                ) {
+                    ERR_MSG = "else if 语句不应该出现在此处";
+                    STATE = "";
+                    break;
+                }
+                pre_condition_statement = statement = new ElseIfStatement({ position: INDEX });
+                if (
+                    readIdentifier().toLowerCase() === "else" &&
+                    skipSpace() > 0 &&
+                    readIdentifier().toLowerCase() === "if" &&
+                    skipSpace() > 0
+                ) {
+                    STATE = "CONDITION";
+                } else {
+                    STATE = "";
+                }
+                break;
+            }
+
+            case "ELSE": {
+                if (
+                    !pre_condition_statement ||
+                    (
+                        !(pre_condition_statement instanceof IfStatement) &&
+                        !(pre_condition_statement instanceof ElseIfStatement)
+                    )
+                ) {
+                    ERR_MSG = "else 语句不应该出现在此处";
+                    STATE = "";
+                    break;
+                }
+                pre_condition_statement = statement = new ElseStatement({ position: INDEX });
+                if (readIdentifier().toLowerCase() === "else") {
+                    STATE = "END";
+                } else {
+                    STATE = "";
+                }
+                break;
+            }
+
+            case "ENDIF": {
+                if (
+                    !pre_condition_statement ||
+                    (
+                        !(pre_condition_statement instanceof IfStatement) &&
+                        !(pre_condition_statement instanceof ElseIfStatement) &&
+                        !(pre_condition_statement instanceof ElseStatement)
+                    )
+                ) {
+                    ERR_MSG = "endif 语句不应该出现在此处";
+                    STATE = "";
+                    break;
+                }
+                pre_condition_statement = statement = new EndifStatement({ position: INDEX });
+                if (readIdentifier().toLowerCase() === "endif") {
+                    STATE = "END";
+                } else {
+                    STATE = "";
+                }
+                break;
+            }
+
+            case "END": {
+                skipSpace();
+                char = input[INDEX];
+                if (isCRLF(char)) {
+                    skipSpaceAndCRLF();
+                    STATE = "START";
+                    append();
+                } else if (char === undefined) {
+                    // check condition statements
+                    if (
+                        pre_condition_statement &&
+                        !(pre_condition_statement instanceof EndifStatement)
+                    ) {
+                        ERR_MSG = "缺少endif";
+                        STATE = "";
+                        INDEX = pre_condition_statement.position; // 指定报错位置
+                        break;
+                    }
+                    // done exit while loop
+                    STATE = "DONE";
+                    append();
+                } else {
+                    STATE = "";
+                }
+                break;
+            }
+
+            case "COMMENT": {
+                let s = "";
+                while (INDEX < input.length) {
+                    char = input[INDEX];
+                    if (isCRLF(char)) {
+                        break;
+                    } else {
+                        s += char;
+                        INDEX++;
+                    }
+                }
+                statement.value = s;
+                STATE = "END";
+                break;
+            }
+
+            case "KEY": {
+                if (IN_LIST) {
+                    if (char === "]") {
+                        INDEX++;
+                        IN_LIST = false;
+                        STATE = "EQUA";
+                    } else {
+                        STATE = "";
+                    }
+                } else if (IN_MAP) {
+                    if (!isLetter(char)) {
+                        STATE = "";
+                        break;
+                    }
+                    const s = readIdentifier();
+                    statement.property = s;
+                    char = input[INDEX];
+                    if (char === "}") {
+                        STATE = "EQUA";
+                        IN_MAP = false;
+                        INDEX++;
+                    } else {
+                        STATE = "";
+                    }
+                } else {
+                    statement = new KVStatement({ position: INDEX });
+                    if (!isLetter(char)) {
+                        STATE = "";
+                        break;
+                    }
+                    const s = readIdentifier();
+                    statement.field = s;
+                    char = input[INDEX];
+                    if (char === "{") {
+                        INDEX++;
+                        IN_MAP = true;
+                        statement.type = KVStatement.Types.MAP;
+                    } else if (char === "[") {
+                        INDEX++;
+                        IN_LIST = true;
+                        statement.type = KVStatement.Types.LIST;
+                    } else if (isSpace(char) || char === "=") {
+                        statement.type = KVStatement.Types.KEY;
+                        STATE = "EQUA";
+                    } else {
+                        STATE = "";
+                    }
+                }
+                break;
+            }
+
+            case "EQUA": {
+                skipSpace();
+                char = input[INDEX];
+                if (char === "=") {
+                    INDEX++;
+                    STATE = "VALUE";
+                } else {
+                    STATE = "";
+                }
+                break;
+            }
+
+            // path or value
+            case "VALUE": {
+                /**
+                 * 暂时对value里的env insert 只做语法检测
+                 * 不做解析处理，在statement类型里边做解析处理
+                 */
+                if (IN_VALUE_ENV_INSERT) {
+                    if (!isLetter(char)) {
+                        STATE = "";
+                        break;
+                    }
+                    const s = readIdentifier();
+                    statement.value += s;
+                    char = input[INDEX];
+                    if (char !== "}") {
+                        STATE = "";
+                        break;
+                    }
+                    statement.value += "}";
+                    IN_VALUE_ENV_INSERT = false;
+                    INDEX++;
+                    char = input[INDEX];
+                    if (isSpace(char) || isCRLF(char)) {
+                        STATE = "END";
+                    }
+                } else {
+                    skipSpace();
+                    let s = "";
+                    while (INDEX < input.length) {
+                        char = input[INDEX];
+                        if (
+                            isSpace(char) || isCRLF(char) ||
+                            (char === "{" && input[INDEX - 1] !== "\\") ||
+                            // 不需要处理“}”, 仅当检测到未转义符的“}”时让出，好让后续逻辑抛错！
+                            (char === "}" && input[INDEX - 1] !== "\\")
+                        ) {
+                            break;
+                        } else {
+                            s += char;
+                            INDEX++;
+                        }
+                    }
+                    char = input[INDEX];
+                    if (char === "{") {
+                        statement.value += s + "{";
+                        INDEX++;
+                        IN_VALUE_ENV_INSERT = true;
+                    } else if (s || statement.value) { // 本意本来不让statement参与判断，这里我不愿定义其它flag变量，暂时先这样了！
+                        statement.value += s || "";
+                        STATE = "END";
+                    } else {
+                        STATE = "";
+                    }
+                }
+                break;
+            }
+
+            /**
+             * 条件语句中的条件处理（不包含运算符=、！=）
+             * !!! 逻辑出口部分记得处理end状态（有可能没有下次循环，需要在本次循环内处理end逻辑）
+             */
+            case "CONDITION": {
+                skipSpace();
+                char = input[INDEX];
+                // 使用声明变量中的map字段
+                if (IN_USE_VARIABLE_MAP) {
+                    if (!isLetter(char)) {
+                        STATE = "";
+                        break;
+                    }
+                    const s = readIdentifier();
+                    statement.lastCondition.property = s;
+                    char = input[INDEX];
+                    // use variable map end
+                    if (char !== "}") {
+                        STATE = "";
+                        break;
+                    }
+                    INDEX++;
+                    char = input[INDEX];
+                    if (char === "]") {
+                        INDEX++;
+                        IN_USE_VARIABLE_MAP = false;
+                        IN_USE_VARIABLE = false;
+                        STATE = "CALC";
+                    } else {
+                        STATE = "";
+                    }
+                }
+                // 使用声明变量
+                else if (IN_USE_VARIABLE) {
+                    if (!isLetter(char)) {
+                        STATE = "";
+                        break;
+                    }
+                    const s = readIdentifier();
+                    statement.lastCondition.field = s;
+                    char = input[INDEX];
+                    // use variable结束
+                    if (char === "]") {
+                        IN_USE_VARIABLE = false;
+                        INDEX++;
+                        STATE = "CALC";
+                    }
+                    // use variable map 开始
+                    else if (char === "{") {
+                        IN_USE_VARIABLE_MAP = true;
+                        INDEX++;
+                    } else {
+                        STATE = "";
+                    }
+                }
+                // 使用环境变量插值
+                else if (IN_ENV_INSERT) {
+                    if (!isLetter(char)) {
+                        STATE = "";
+                        break;
+                    }
+                    const s = readIdentifier();
+                    statement.lastCondition.field = s;
+                    char = input[INDEX];
+                    if (char === "}") {
+                        INDEX++;
+                        IN_ENV_INSERT = false;
+                        STATE = "CALC";
+                    } else {
+                        STATE = "";
+                    }
+                }
+                // 字面量
+                else {
+                    // 字面量, 允许数字开头
+                    if (isLetter(char) || isNumber(char)) {
+                        const s = readIdentifier();
+                        const condition = new Condition({
+                            type: Condition.Types.LITERAL,
+                            field: s
+                        });
+                        statement.conditions.push(condition);
+                        STATE = "CALC";
+                    }
+                    // use variable start
+                    else if (char === "[") {
+                        INDEX++;
+                        IN_USE_VARIABLE = true;
+                        const condition = new Condition({
+                            type: Condition.Types.USE_VARIABLE
+                        });
+                        statement.conditions.push(condition);
+                    }
+                    // use envvariable start
+                    else if (char === "{") {
+                        INDEX++;
+                        IN_ENV_INSERT = true;
+                        const condition = new Condition({
+                            type: Condition.Types.USE_ENV
+                        });
+                        statement.conditions.push(condition);
+                    } else {
+                        STATE = "";
+                    }
+                }
+                break;
+            }
+
+            /**
+             * =、!= 处理
+             */
+            case "CALC": {
+                skipSpace();
+                char = input[INDEX];
+                if (char === "=") {
+                    INDEX++;
+                    STATE = "CONDITION";
+                    statement.conditions.push(
+                        new Operator({type: Operator.Types.EQUAL})
+                    );
+                } else if (char === "!") {
+                    const next = readCharByCount(2);
+                    if (next === "!=") {
+                        INDEX += 2;
+                        STATE = "CONDITION";
+                        statement.conditions.push(
+                            new Operator({type: Operator.Types.NO_EQUAL})
+                        );
+                    } else {
+                        STATE = "";
+                    }
+                } else if (char === undefined || isCRLF(char) || isSpace(char)) {
+                    STATE = "END";
+                } else {
+                    STATE = "";
+                }
+                break;
+            }
+
+            default: {
+                throw ERR_MSG + getErrorText(input, INDEX);
+            }
+        }
+        // switch end
+    }
+    // while end
+
+    const return_result = result;
+    result = [];
+    INDEX = 0;
+    statement = undefined;
+    input = "";
+    ERR_MSG = "";
+
+    return return_result;
+}
+
+// debug begin =============
+// const st = parse(content);
+// const cds = st.filter(i => i instanceof IfStatement || i instanceof ElseIfStatement);
+// cds.forEach(i => console.log(i.convert2function().toString()));
+// debug end ===============
+
+function readCharByCount (count) {
+    return input.slice(INDEX, INDEX + count);
+}
+
+function readIdentifier () {
+    let s = "";
+    while (INDEX < input.length) {
+        const char = input[INDEX];
+        if (isLetter(char) || isNumber(char) || char === "_") {
+            s += char;
+            INDEX++;
+        } else {
+            break;
+        }
+    }
+    return s;
+}
+
+function append () {
+    if (!statement) return;
+    result.push(statement);
+    statement = undefined;
+}
+
+function isSpace (char) {
+    return char === undefined ? false : char.codePointAt(0) === 32;
+}
+
+function isCRLF (char) {
+    return ["\r", "\n"].includes(char);
+}
+
+function isLetter (char = "") {
+    const point = char.toLowerCase().codePointAt(0);
+    return (point < 123 && point > 96) || ["_"].includes(char);
+}
+
+function isNumber (char = "") {
+    if (char === undefined) return false;
+    const point = char.codePointAt(0);
+    return point > 47 && point < 58;
+}
+
+function skipSpace () {
+    let count = 0;
+    while (INDEX < input.length) {
+        if (isSpace(input[INDEX])) {
+            INDEX++;
+            count++;
+        } else {
+            break;
+        }
+    }
+    return count;
+}
+
+function skipSpaceAndCRLF () {
+    let count = 0;
+    while (INDEX < input.length) {
+        const char = input[INDEX];
+        if (isSpace(char) || isCRLF(char)) {
+            INDEX++;
+            count++;
+        } else {
+            break;
+        }
+    }
+    return count;
+}
+
+function getErrorText (text = "", position = -1) {
+    text = text || input;
+    const lines = [/* "xxxx\n", "xxxx\n", ... */];
+    const positions = [/* [1,2,3,4], ... */];
+    let index = 0;
+    let line = "";
+    let spots = [];
+    while (index < text.length + 1) {
+        const char = text[index];
+        if (char === "\n" || char === "\r") {
+            if (char === "\r") {
+                if (text[index + 1] !== "\n") throw new Error("此处应为'\n'!");
+                spots.push(index, index + 1);
+                index += 2;
+            } else {
+                spots.push(index);
+                index += 1;
+            }
+            lines.push(line);
+            line = "";
+            positions.push(spots);
+            spots = [];
+        } else if (char === undefined) {
+            lines.push(line);
+            line = "";
+            positions.push(spots);
+            spots = [];
+            break;
+        } else {
+            spots.push(index);
+            line += char;
+            index++;
+        }
+    }
+    const PRE_LINE_COUNT = 2; // 带上前面多少行
+    line = -1;
+    index = 0;
+    let preSpaceLen = 0;
+    while (index < positions.length) {
+        spots = positions[index];
+        if (spots.includes(position)) {
+            preSpaceLen = position - spots[0];
+            line = index;
+            break;
+        }
+        index++;
+    }
+    if (line === -1) {
+        line = positions.length - 1;
+        preSpaceLen = positions[positions.length - 1].length;
+    }
+    index = PRE_LINE_COUNT > line ? 0 : line - PRE_LINE_COUNT;
+    let tips = "\r\n";
+    let lastLinePreLen = 0;
+    for (; index <= line; index++) {
+        const pre = "line" + (index + 1) + " >  ";
+        lastLinePreLen = pre.length;
+        tips += pre + lines[index] + "\r\n";
+    }
+    lastLinePreLen += preSpaceLen;
+    tips += " ".repeat(lastLinePreLen) + "^\r\n";
+    tips += " ".repeat(lastLinePreLen) + "语法错误\r\n";
+    tips += " ".repeat(lastLinePreLen) + "语法规则参考：https://github.com/lilindog/parseenv\r\n";
+    return tips;
+}
 
 const log = (msg, isErr) => {
     const prefix = "[Parseenv]";
@@ -86,91 +958,18 @@ const hasRemotePath = envPath => {
     if (!fs__default["default"].existsSync(envPath)) {
         return false;
     }
-    const includePaths = getIncludePathsFromString(fs__default["default"].readFileSync(envPath).toString("utf8"));
-    if (includePaths.some(isRemotePath)) return true;
-    for (let includePath of includePaths) {
+    let statements = [];
+    try {
+        statements = parse(fs__default["default"].readFileSync(envPath).toString("utf8")).filter(i => i instanceof IncludeStatement);
+    } catch (err) {
+        log(envPath + "\r\n" + err, true);
+    }
+    for (let include of statements) {
+        if (isRemotePath(include.value)) return true;
         const envPathDir = path__default["default"].dirname(envPath);
-        if (hasRemotePath(path__default["default"].resolve(envPathDir, includePath))) return true;
+        if (hasRemotePath(path__default["default"].resolve(envPathDir, include.getValue()))) return true;
     }
     return false;
-};
-
-/**
- * 解析键值对到上下文
- *
- * @param {Object} context 结果上下文
- * @param {String} str kv对语句
- * @return {void}
- * @public
- */
-const parseKV2Context = (context, str) => {
-    str = str.replace(/ +/g, " ");
-    let [ key, value ] = str.split("="); // value部分若有=号可能会发生异常
-    key = key.trim();
-    value = value.trim();
-    // map
-    if (key.includes("{") && key.slice(-1) === "}") {
-        const l_index = key.indexOf("{");
-        let field = key.slice(0, l_index);
-        let property = key.slice(l_index + 1, -1);
-        if (!context[field]) context[field] = {};
-        context[field][property] = handleValue(value);
-    }
-    // list
-    else if (key.slice(-2, 1) === "[" && key.slice(-1) === "]") {
-        let field = key.slice(0, -2);
-        if (!context[field]) context[field] = [];
-        context[field].push(handleValue(value));
-    }
-    // kv
-    else {
-        context[key] = handleValue(value);
-    }
-};
-
-/**
- * 解析字符串里的所有include的路径集合
- *
- * @param {String} str env文件内容
- * @return {Array<String>}
- */
-const getIncludePathsFromString = (str, isHandleEnvironmentVariable = true) => {
-    return (str.match(INCLUDE_REG) || [])
-        .map(statement => statement.replace(/ +/g, " ").split(" ")[1])
-        .map(isHandleEnvironmentVariable ? handleEnvironmentVariable : item => item);
-};
-
-/**
- * 处理表达式右侧语句的环境变量插值和其转义
- *
- * @param {String} value
- * @return {String}
- * @public
- */
-const handleEnvironmentVariable = value => {
-    const envInjectTags = value.match(ENV_INJECTION);
-    if (!envInjectTags) return value;
-    let field, property;
-    [...new Set(envInjectTags)].forEach(tag => {
-        field = tag.replace(/[\{\}]/g, "");
-        property = process.env[field];
-        if (property === undefined) log(`环境变量 "${field}" 不存在！`);
-        value = value.replace(new RegExp(tag, "g"), property || tag);
-    });
-    return value;
-};
-
-/**
- * 处理变量值的类型问题
- *
- * @param {String} value
- * @returns {(Number|String)}
- */
-const handleValue = value => {
-    value = value.trim();
-    value = handleEnvironmentVariable(value);
-    const isNumber = /^\d+$/.test(value);
-    return isNumber ? Number(value) : value;
 };
 
 /**
@@ -178,30 +977,14 @@ const handleValue = value => {
  * 嵌套的按照嵌套的优先级处理
  */
 
-/**
- * 解析结果节点
- *
- * @public
- */
-class EnvNode {
-    /**
-     * EnvNode节点的字段
-     *
-     * path 节点的路径，http/s链接或者文件绝对路径
-     * name include语句时右边的语句，一般是相对路径或者名字
-     * content 节点的string内容
-     * includes 子节点数组，元素类型为EnvNode
-     */
-    static Fields = {
-        path: "",
-        name: "",
-        content: "",
-        includes: []
-    };
-
-    constructor (options = {}) {
-        const Fields = JSON.parse(JSON.stringify(EnvNode.Fields));
-        Reflect.ownKeys(Fields).forEach(k => this[k] = options[k] ?? Fields[k]);
+function mergePath (left, right) {
+    if (isRemotePath(right)) {
+        return right;
+    }
+    if (isRemotePath(left)) {
+        return new url__default["default"].URL(right, left).toString();
+    } else {
+        return path__default["default"].resolve(path__default["default"].dirname(left), right);
     }
 }
 
@@ -215,7 +998,7 @@ class EnvNode {
  * @return {Promise<string>}
  * @private
  */
-const getRemoteEnv = (
+const requestRemoteEnv = (
     remoteUrl,
     resolveCb,
     timeout = 1000,
@@ -252,7 +1035,7 @@ const getRemoteEnv = (
             const u = new url__default["default"].URL(remoteUrl);
             u.hostname = u.hash = u.search = "";
             const redirectUrl = new url__default["default"].URL(res.headers.location, u.href).href;
-            getRemoteEnv(redirectUrl, done, timeout, --redirects);
+            requestRemoteEnv(redirectUrl, done, timeout, --redirects);
             return;
         }
         if (res.statusCode >= 400) {
@@ -283,429 +1066,174 @@ const getRemoteEnv = (
 /**
  * 解析本地env
  *
+ * @context {result}
  * @param {String} envPath env入口文件路径，可以是相对也可以是绝对
- * @param {Array<string>} origins 文件的遍历进来的路径集合, 该参数递归传递，无需干预
- * @return {Array<EnvNode>}
+ * @return {void}
  * @public
  */
-const getEnv = (envPath, name) => {
-    let envNode = new EnvNode({ name: name ?? envPath });
+function getEnv (envPath) {
     if (!path__default["default"].isAbsolute(envPath)) {
         envPath = path__default["default"].resolve(envPath);
     }
     if (!fs__default["default"].existsSync(envPath)) {
         log(`"${envPath}" env文件不存在！`);
-        return new EnvNode;
+        return;
     }
     const content = fs__default["default"].readFileSync(envPath).toString("utf8");
-    envNode.path = envPath;
-    envNode.content = content;
-    const includePaths = getIncludePathsFromString(content);
-    includePaths.forEach(includePath => {
-        const name = includePath;
-        includePath = handleEnvironmentVariable(includePath);
-        const envPathDir = path__default["default"].dirname(envPath);
-        includePath = path__default["default"].resolve(envPathDir, includePath);
-        envNode.includes.push(getEnv(includePath, name));
-    });
-    return envNode;
-};
+    let statements = [];
+    try {
+        statements = parse(content);
+    } catch (err) {
+        log(`${envPath}\r\n${err}`, true);
+    }
+
+    // handle statement
+    let pre_condition = false;
+    let skip_block = false;
+    for (let index = 0; index < statements.length; index++) {
+        const statement = statements[index];
+        if (skip_block) {
+            if (
+                [
+                    IfStatement,
+                    ElseIfStatement,
+                    ElseStatement,
+                    EndifStatement
+                ].some(i => statement instanceof i)
+            ) {
+                skip_block = false;
+            } else {
+                continue;
+            }
+        }
+
+        if (statement instanceof KVStatement) {
+            if (statement.property) {
+                if (!this[statement.field]) this[statement.field] = {};
+                this[statement.field][statement.property] = statement.getValue();
+            } else {
+                this[statement.field] = statement.getValue();
+            }
+        }
+        else if (statement instanceof IncludeStatement) {
+            getEnv.call(
+                this,
+                mergePath(envPath, statement.getValue())
+            );
+        }
+        else if (statement instanceof ElseIfStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof IfStatement) {
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof ElseStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+        }
+        else if (statement instanceof EndifStatement) {
+            pre_condition = false;
+        }
+    }
+}
 
 /**
  * 解析含有远程url include的env文件
  *
  * @param {String} envPath 可以是远程url，也可以是本地文件路径path，远程路径必须为http/s， 本地则可以是相对或绝对
- * @return {Promise<String>} 遵循include规则处理后的env文件string内容组成的数组
+ * @return {void}
  * @public
  */
-const getEnvAsync = async (envPath, name) => {
-    // 暂未考虑include同文件去重，或全局去重（不同包含层级）等问题。
-    // 默认还是以后来者居上原则
-    let envNode = new EnvNode({ name:  name ?? envPath });
-    const isRemoteLink = isRemotePath(envPath);
-    if (isRemoteLink) {
-        const content = await getRemoteEnv(envPath);
-        envNode.path = envPath;
-        envNode.content = content;
-        const includePaths = getIncludePathsFromString(content);
-        for (let includePath of includePaths) {
-            const name = includePath;
-            includePath = handleEnvironmentVariable(includePath);
-            includePath = new url__default["default"].URL(includePath, envPath).href;
-            envNode.includes.push( (await getEnvAsync(includePath, name)) );
-        }
+async function getEnvAsync (envPath) {
+    let content = "";
+    if (isRemotePath(envPath)) {
+        content = await requestRemoteEnv(envPath);
     } else {
-        if (!path__default["default"].isAbsolute(envPath)) {
-            envPath = path__default["default"].resolve(envPath);
-        }
+        if (!path__default["default"].isAbsolute(envPath)) envPath = path__default["default"].resolve(envPath);
         if (!fs__default["default"].existsSync(envPath)) {
             log(`"${envPath}" env文件不存在！`);
-            return new EnvNode;
+            return;
         }
-        const content = fs__default["default"].readFileSync(envPath).toString("utf8");
-        envNode.path = envPath;
-        envNode.content = content;
-        const includePaths = getIncludePathsFromString(content, false);
-        for (let includePath of includePaths) {
-            const name = includePath;
-            includePath = handleEnvironmentVariable(includePath);
-            if (isRemotePath(includePath)) {
-                envNode.includes.push( (await getEnvAsync(includePath, name)) );
-            } else {
-                includePath = path__default["default"].resolve(path__default["default"].dirname(envPath), includePath);
-                envNode.includes.push( (await getEnvAsync(includePath, name)) );
-            }
-        }
-    }
-    return envNode;
-};
-
-let node;
-
-class IFStatementInfo {
-    static Types = {
-        IF: "IF",
-        ELSE: "ELSE",
-        ELSEIF: "ELSEIF",
-        ENDIF: "ENDIF"
+        content = fs__default["default"].readFileSync(envPath).toString("utf8");
     }
 
-    /**
-     * IFStatementInfo 字段说明
-     *
-     * type 表达式类型
-     * statement 表达式
-     * line 表达式在env内容字符串中的行数
-     * position 表达式在env内容字符串中的开始位置索引
-     * exec 执行statment条件的函数，返回表达式最终计算结果
-     */
-    static Fields = {
-        type: "",
-        statement: "",
-        line: -1,
-        position: -1,
-        exec: ""
+    let statements = [];
+    try {
+        statements = parse(content);
+    } catch (err) {
+        log(envPath + "\r\n" + err, true);
     }
 
-    constructor (options = {}) {
-        const Fields = JSON.parse(JSON.stringify(IFStatementInfo.Fields));
-        Reflect.ownKeys(Fields).forEach(k => this[k] = options[k] ?? Fields[k]);
-    }
-}
-
-/**
- * 获取ifelse表达式的节点数据 
- * 
- * @param {String} input env内容字符串
- * @param {Array}
- * @public
- */
-const getIFStatementInfo = input => {
-    const matches = [];
-    /* eslint-disable */
-    while (true) {
-    /* eslint-enable */
-        const r = IF_STATEMENT.exec(input);
-        r && matches.push(r);
-        if (!r) break;
-    }
-    const lines = getLines();
-    const result = [];
-    for (let match of matches) {
-        for (let i = 0; i < lines.length; i++) {
-            const row = lines[i];
-            if (row.includes(match.index)) {
-                const type = getStatementType(match[0]);
-                const isNeedExec = [
-                    IFStatementInfo.Types.IF,
-                    IFStatementInfo.Types.ELSEIF
-                ].includes(type);
-                const ifStatementInfo = new IFStatementInfo({
-                    type,
-                    statement: match[0],
-                    line: i + 1,
-                    position: match.index,
-                    exec: isNeedExec ? getStatementExecFunction(match[0]) : () => {}
-                });
-                result.push(ifStatementInfo);
-                break;
-            }
-        }
-    }
-    return result;
-    function getStatementExecFunction (statement = "") {
-        ONE_IF_CONDITION.lastIndex = 0;
-        TWO_IF_CONDITION.lastIndex = 0;
-        const oic = ONE_IF_CONDITION.exec(statement);
-        const tic = TWO_IF_CONDITION.exec(statement);
-        if (oic) {
-            const [, condition ] = oic;
-            const _ = handleCondition(condition);
-            let code = `return ${_};`;
-            return new Function(code); // 目前，不是 if、else if 的语句会返回空函数，如：ELSE ENDIF 就会返回空函数
-        } else if (tic) {
-            const [, leftCondition, flag, rightCondition ] = tic;
-            let equa = flag === "!=" ? " !== " : flag === "=" ? " === " : undefined;
-            let l = handleCondition(leftCondition);
-            let r = handleCondition(rightCondition);
-            let code = `return ${l}${equa}${r};`;
-            return new Function(code);
-        }
-        function handleCondition (condition = "") {
-            // use variable
-            if (condition[0] === "[" && condition.slice(-1)[0] === "]") {
-                const l = condition.indexOf("{");
-                const r = condition.indexOf("}");
-                if (l > -1 && r > -1) {
-                    return "this?." + condition.slice(1, l) + "?." + condition.slice(l + 1, r);
-                } else {
-                    return "this?." + condition.slice(1, -1);
-                }
-            } 
-            // insert env variable`
-            else if (condition[0] === "{" && condition.slice(-1)[0] === "}") {
-                return `process.env?.${condition.slice(1, -1)}`;
-            } 
-            // string
-            else {
-                const isNumber = /^\d+$/g.test(condition);
-                condition = isNumber ? condition : (`"${condition}"`);
-                return `${condition}`;
-            }
-        }
-    }
-    function getStatementType (statement) {
-        statement = statement.replace(/\s+/g, " ").toLocaleLowerCase();
-        if (statement.startsWith("if")) return "IF";
-        else if (statement.startsWith("else if")) return "ELSEIF";
-        else if (statement.startsWith("else")) return "ELSE";
-        else if (statement.startsWith("endif")) return "ENDIF";
-    }
-    function getLines () {
-        let i = 0;
-        let res = [];
-        let temp = [];
-        while (i < input.length) {
-            if (input[i] === "\n") {
-                res.push(temp);
-                temp = [];
-                i++;
-            } else if (input[i] === "\r" && input[i + 1] === "\n") {
-                res.push(temp);
-                temp = [];
-                i += 2;
-            } else {
-                temp.push(i);
-                i++;
-            }
-        }
-        res.push(temp);
-        return res;
-    }
-}; 
-
-/**
- * content转换为行
- *  
- * @param {String} input
- * @return {Array<String>}
- * @private
- */
-function content2lines (input = "") {
-    let lines = [];
-    let str = "";
-    for (let i = 0; i < input.length;) {
-        const char = input[i];
-        if (char === "\n") {
-            i++;
-            lines.push(str);
-            str = "";
-        } else if (char === "\r" && input[i + 1] === "\n") {
-            lines.push(str);
-            str = "";
-            i += 2;
-        } else {
-            i++;
-            str += char;
-        }
-    }
-    if (str) lines.push(str);
-    return lines;
-}
-
-/**
- * 检测if等语法的配套合法性
- * 
- * @param {Array} infos
- * @return {void}
- * @private
- */
-function checkIFStatement (infos = []) {
-    if (!infos.length) return;
-    let current = infos[0];
-    if (current.type !== "IF") {
-        log(buildErrorTips(current.line, current.position, "应该为if表达式！"), true);
-    }
-    for (let i = 1; i < infos.length; i++) {
-        const info = infos[i];
-        if (current.type === IFStatementInfo.Types.IF) {
+    // handle statement
+    let pre_condition = false;
+    let skip_block = false;
+    for (let index = 0; index < statements.length; index++) {
+        const statement = statements[index];
+        if (skip_block) {
             if (
-                ![
-                    IFStatementInfo.Types.ENDIF, 
-                    IFStatementInfo.Types.ELSE, 
-                    IFStatementInfo.Types.ELSEIF
-                ].includes(info.type)
+                [
+                    IfStatement,
+                    ElseIfStatement,
+                    ElseStatement,
+                    EndifStatement
+                ].some(i => statement instanceof i)
             ) {
-                log(buildErrorTips(info.line, info.position, "不应该为if表达式！"), true);
-            }
-            current = info;
-            continue;
-        }
-        if (current.type === IFStatementInfo.Types.ENDIF) {
-            if (info.type !== IFStatementInfo.Types.IF) {
-                log(buildErrorTips(info.line, info.position, "应该为if表达式！"), true);
-            }
-            current = info;
-            continue;
-        }
-        if (current.type === IFStatementInfo.Types.ELSEIF) {
-            if (!["ENDIF", "ELSEIF", "ELSE"].includes(info.type)) {
-                log(buildErrorTips(info.line, info.position, "不应该为if表达式！"), true);
-            }
-            current = info;
-            continue;
-        }
-        if (current.type === IFStatementInfo.Types.ELSE) {
-            if (info.type !== IFStatementInfo.Types.ENDIF) {
-                log(buildErrorTips(info.line, info.position, "应该为endif表达式！"), true);
-            }
-            current = info;
-            continue;
-        }
-    }
-    if (current.type !== IFStatementInfo.Types.ENDIF) {
-        log(buildErrorTips(current.line, current.position, "没有对应的结束的endif表达式！"), true);
-    }
-}
-
-function buildErrorTips (line, position, msg) {
-    let tips = `${node.path} 第${line}行${msg}\n`;
-    tips += `>>> ${readPositionCodeFragment(node.content, position)}\n`;
-    return tips;
-}
-
-function readPositionCodeFragment (code = "", position = 0) {
-    let s = "";
-    while (position < code.length) {
-        const char = code[position];
-        if (char === "\r") break;
-        else s += char;
-        position++;
-    }
-    return s;
-}
-
-/**
- * 获取env content的片段
- * 主要为了方便处理ifstatment表达式
- * 返回数组类型，元素为字符串或函数，函数需要执行才能返回字符串
- * 
- * @param {Array<IFStatementInfo>} infos
- * @param {Array<String>} lines
- * @return {Array<Function|String>}
- * @private
- */
-function getFragments (infos, lines) {
-    if (!infos.length) return [lines.join("\r\n")];
-    // 需要注意，info的line是从1开始的，对应0，因为为了方便人读取，所以从1开始
-    let res = [];
-    let code = "";
-    // ifelse statement前面的表达式
-    if (infos[0].line !== 1) {
-        res.push(
-            lines.slice(0, infos[0].line - 1).join("\r\n") // info的line是从1开始的，为了方便人读取
-        );
-    }
-    // ifelse表达式, 此处不用处理ifelse statement的合法检查
-    for (let i = 0; i < infos.length; i++) {
-        const info = infos[i];
-        if (info.type === "IF") {
-            const block = lines.slice(info.line, infos[i + 1].line - 1).join("\r\n");
-            code += `
-                const fcondition${i} = ${info.exec.toString()};
-                if (fcondition${i}.call(this)) {
-                    return \`${block}\`;
-                }
-            `;
-        } else if (info.type === "ELSEIF") {
-            code = `const fcondition${i} = ${info.exec.toString()};\r\n` + code;
-            code += `
-                else if (fcondition${i}.call(this)) {
-                    return \`${lines.slice(info.line, infos[i + 1].line - 1).join("\r\n")}\`;
-                }
-            `;
-        } else if (info.type === "ELSE") {
-            code += `
-                else {
-                    return \`${lines.slice(info.line, infos[i + 1].line - 1).join("\r\n")}\`;
-                }
-            `;
-        } else if (info.type === "ENDIF") {
-            res.push(new Function(code));
-            code = "";
-            // 处理剩下的非ifelse staement语句或下次if statement之间的语句
-            if (infos[i + 1]) {
-                res.push(lines.slice(info.line, infos[i + 1].line - 1).join("\r\n"));
+                skip_block = false;
             } else {
-                res.push(lines.slice(info.line).join("\r\n"));
+                continue;
             }
         }
-    }
-    return res;
-}
 
-/**
- * 入口
- * 
- * @param {EnvNode} envNode
- * @param {(void|Array<IFStatementInfo>)}
- * @public
- */
-function getFragments$1 (envNode) {
-    if (!(envNode instanceof EnvNode)) throw TypeError("envNode 应为 EnvNode类型！");
-    node = envNode;
-    const infos = getIFStatementInfo(node.content);
-    checkIFStatement(infos);
-    const lines = content2lines(node.content);
-    const fragments = getFragments(infos, lines);
-    node = undefined;
-    return fragments;
-}
-
-function main (context = {}, envNode = {}) {
-    const fragments = getFragments$1(envNode);
-    for (let fragment of fragments) {
-        let fragmentContent = "";
-        if (typeof fragment === "function") {
-            fragmentContent = fragment.call(context) || "";
-        } else {
-            fragmentContent = fragment;
+        if (statement instanceof KVStatement) {
+            if (statement.property) {
+                if (!this[statement.field]) this[statement.field] = {};
+                this[statement.field][statement.property] = statement.getValue();
+            } else {
+                this[statement.field] = statement.getValue();
+            }
         }
-        let rows = fragmentContent.match(STATEMENT) || [];
-        for (let row of rows) {
-            // include statement
-            if (row.toLocaleLowerCase().startsWith("include")) {
-                row = row.replace(/ +/g, " ");
-                const [, path] = row.split(" ");
-                const node = envNode.includes.find(node => {
-                    return node.name === path;
-                });
-                if (node) main(context, node);
+        else if (statement instanceof IncludeStatement) {
+            await getEnvAsync.call(
+                this,
+                mergePath(envPath, statement.getValue())
+            );
+        }
+        else if (statement instanceof ElseIfStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
             }
-            // KV statement
-            else {
-                parseKV2Context(context, row);
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
             }
+        }
+        else if (statement instanceof IfStatement) {
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof ElseStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+        }
+        else if (statement instanceof EndifStatement) {
+            pre_condition = false;
         }
     }
 }
@@ -718,31 +1246,19 @@ function main (context = {}, envNode = {}) {
  * @param {Boolean} [options.isStrict] 是否是严格模式，严格模式下env文件找不到会抛错
  * @return {(Object|Promise<Object>)}
  */
-var main$1 = (envPath, options) => {
+var main = (envPath, options) => {
     if (options && {}.toString.call(options) === "[object Object]") {
         const { isStrict } = options;
         global[kConfigIsStrict] = isStrict;
     }
     const context = {};
-    if (isRemotePath(envPath)) {
-        return getEnvAsync(envPath)
-            .then(node => {
-                main(context, node);
-                return context;
-            });
-    }
-    if (hasRemotePath(envPath)) {
-        return getEnvAsync(envPath)
-            .then(node => {
-                main(context, node);
-                return context;
-            });
+    if (isRemotePath(envPath) || hasRemotePath(envPath)) {
+        return getEnvAsync.call(context, envPath).then(() => context);
     } else {
-        const node = getEnv(envPath);
-        main(context, node);
+        getEnv.call(context, envPath);
         return context;
     }
 };
 
-module.exports = main$1;
+module.exports = main;
 //# sourceMappingURL=parseenv.js.map

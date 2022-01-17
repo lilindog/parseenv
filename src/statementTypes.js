@@ -2,6 +2,7 @@
  * handle value env insert
  *
  * @return {String}
+ * @private
  */
 function handleValue () {
     let value = this.value;
@@ -30,6 +31,8 @@ function handleValue () {
         field = process.env?.[field] ? String(process.env?.[field]) : "NONE";
         value = value.replace(key, field);
     });
+    // "123" -> Number or "123c" -> String
+    value = isNaN(Number(value)) ? value : Number(value);
     return value;
 }
 
@@ -155,7 +158,8 @@ class IfStatement extends RowBase {
             if (condition instanceof Operator) {
                 const operator =
                     condition.type === Operator.Types.EQUAL ? "===" :
-                    condition.type === Operator.Types.NO_EQUAL ? "!==" : "";
+                        condition.type === Operator.Types.NO_EQUAL ? "!==" :
+                            "";
                 if (index > 1) code += ` && ${preConditionCode} ${operator} `;
                 else code += operator;
             }
@@ -203,7 +207,7 @@ class ElseIfStatement extends IfStatement {
  * @public
  */
 class ElseStatement extends RowBase {
-    static  Fields = {};
+    static Fields = {};
     constructor (props) {
         super(props);
     }
@@ -228,7 +232,7 @@ class EndifStatement extends RowBase {
  */
 class IncludeStatement extends RowBase {
     static Fields = {
-        value: "", // 可以换为编译好的函数处理环境变量插值后返回真正的值
+        value: "" // 可以换为编译好的函数处理环境变量插值后返回真正的值
     };
 
     constructor (props) {
@@ -255,7 +259,10 @@ class CommentStatement extends RowBase {
     }
 }
 
-module.exports = {
+/**
+ * export modules
+ */
+export {
     KVStatement,
     IfStatement,
     ElseIfStatement,

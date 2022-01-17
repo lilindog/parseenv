@@ -9,36 +9,27 @@ import url from "url";
 import path from "path";
 import fs from "fs";
 import {
-    getIncludePathsFromString,
-    handleEnvironmentVariable,
     isRemotePath,
     log
 } from "./helper.js";
+import {
+    KVStatement,
+    IfStatement,
+    ElseIfStatement,
+    ElseStatement,
+    EndifStatement,
+    IncludeStatement
+} from "./statementTypes.js";
+import { parse } from "./parse.js";
 
-/**
- * 解析结果节点
- *
- * @public
- */
-export class EnvNode {
-    /**
-     * EnvNode节点的字段
-     *
-     * path 节点的路径，http/s链接或者文件绝对路径
-     * name include语句时右边的语句，一般是相对路径或者名字
-     * content 节点的string内容
-     * includes 子节点数组，元素类型为EnvNode
-     */
-    static Fields = {
-        path: "",
-        name: "",
-        content: "",
-        includes: []
-    };
-
-    constructor (options = {}) {
-        const Fields = JSON.parse(JSON.stringify(EnvNode.Fields));
-        Reflect.ownKeys(Fields).forEach(k => this[k] = options[k] ?? Fields[k]);
+function mergePath (left, right) {
+    if (isRemotePath(right)) {
+        return right;
+    }
+    if (isRemotePath(left)) {
+        return new url.URL(right, left).toString();
+    } else {
+        return path.resolve(path.dirname(left), right);
     }
 }
 
@@ -52,7 +43,7 @@ export class EnvNode {
  * @return {Promise<string>}
  * @private
  */
-const getRemoteEnv = (
+const requestRemoteEnv = (
     remoteUrl,
     resolveCb,
     timeout = 1000,
@@ -89,7 +80,7 @@ const getRemoteEnv = (
             const u = new url.URL(remoteUrl);
             u.hostname = u.hash = u.search = "";
             const redirectUrl = new url.URL(res.headers.location, u.href).href;
-            getRemoteEnv(redirectUrl, done, timeout, --redirects);
+            requestRemoteEnv(redirectUrl, done, timeout, --redirects);
             return;
         }
         if (res.statusCode >= 400) {
@@ -120,81 +111,179 @@ const getRemoteEnv = (
 /**
  * 解析本地env
  *
+ * @context {result}
  * @param {String} envPath env入口文件路径，可以是相对也可以是绝对
- * @param {Array<string>} origins 文件的遍历进来的路径集合, 该参数递归传递，无需干预
- * @return {Array<EnvNode>}
+ * @return {void}
  * @public
  */
-const getEnv = (envPath, name) => {
-    let envNode = new EnvNode({ name: name ?? envPath });
+function getEnv (envPath) {
     if (!path.isAbsolute(envPath)) {
         envPath = path.resolve(envPath);
     }
     if (!fs.existsSync(envPath)) {
         log(`"${envPath}" env文件不存在！`);
-        return new EnvNode;
+        return;
     }
     const content = fs.readFileSync(envPath).toString("utf8");
-    envNode.path = envPath;
-    envNode.content = content;
-    const includePaths = getIncludePathsFromString(content);
-    includePaths.forEach(includePath => {
-        const name = includePath;
-        includePath = handleEnvironmentVariable(includePath);
-        const envPathDir = path.dirname(envPath);
-        includePath = path.resolve(envPathDir, includePath);
-        envNode.includes.push(getEnv(includePath, name));
-    });
-    return envNode;
-};
+    let statements = [];
+    try {
+        statements = parse(content);
+    } catch (err) {
+        log(`${envPath}\r\n${err}`, true);
+    }
+
+    // handle statement
+    let pre_condition = false;
+    let skip_block = false;
+    for (let index = 0; index < statements.length; index++) {
+        const statement = statements[index];
+        if (skip_block) {
+            if (
+                [
+                    IfStatement,
+                    ElseIfStatement,
+                    ElseStatement,
+                    EndifStatement
+                ].some(i => statement instanceof i)
+            ) {
+                skip_block = false;
+            } else {
+                continue;
+            }
+        }
+
+        if (statement instanceof KVStatement) {
+            if (statement.property) {
+                if (!this[statement.field]) this[statement.field] = {};
+                this[statement.field][statement.property] = statement.getValue();
+            } else {
+                this[statement.field] = statement.getValue();
+            }
+        }
+        else if (statement instanceof IncludeStatement) {
+            getEnv.call(
+                this,
+                mergePath(envPath, statement.getValue())
+            );
+        }
+        else if (statement instanceof ElseIfStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof IfStatement) {
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof ElseStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+        }
+        else if (statement instanceof EndifStatement) {
+            pre_condition = false;
+        }
+    }
+}
 
 /**
  * 解析含有远程url include的env文件
  *
  * @param {String} envPath 可以是远程url，也可以是本地文件路径path，远程路径必须为http/s， 本地则可以是相对或绝对
- * @return {Promise<String>} 遵循include规则处理后的env文件string内容组成的数组
+ * @return {void}
  * @public
  */
-const getEnvAsync = async (envPath, name) => {
-    // 暂未考虑include同文件去重，或全局去重（不同包含层级）等问题。
-    // 默认还是以后来者居上原则
-    let envNode = new EnvNode({ name:  name ?? envPath });
-    const isRemoteLink = isRemotePath(envPath);
-    if (isRemoteLink) {
-        const content = await getRemoteEnv(envPath);
-        envNode.path = envPath;
-        envNode.content = content;
-        const includePaths = getIncludePathsFromString(content);
-        for (let includePath of includePaths) {
-            const name = includePath;
-            includePath = handleEnvironmentVariable(includePath);
-            includePath = new url.URL(includePath, envPath).href;
-            envNode.includes.push( (await getEnvAsync(includePath, name)) );
-        }
+async function getEnvAsync (envPath) {
+    let content = "";
+    if (isRemotePath(envPath)) {
+        content = await requestRemoteEnv(envPath);
     } else {
-        if (!path.isAbsolute(envPath)) {
-            envPath = path.resolve(envPath);
-        }
+        if (!path.isAbsolute(envPath)) envPath = path.resolve(envPath);
         if (!fs.existsSync(envPath)) {
             log(`"${envPath}" env文件不存在！`);
-            return new EnvNode;
+            return;
         }
-        const content = fs.readFileSync(envPath).toString("utf8");
-        envNode.path = envPath;
-        envNode.content = content;
-        const includePaths = getIncludePathsFromString(content, false);
-        for (let includePath of includePaths) {
-            const name = includePath;
-            includePath = handleEnvironmentVariable(includePath);
-            if (isRemotePath(includePath)) {
-                envNode.includes.push( (await getEnvAsync(includePath, name)) );
+        content = fs.readFileSync(envPath).toString("utf8");
+    }
+
+    let statements = [];
+    try {
+        statements = parse(content);
+    } catch (err) {
+        log(envPath + "\r\n" + err, true);
+    }
+
+    // handle statement
+    let pre_condition = false;
+    let skip_block = false;
+    for (let index = 0; index < statements.length; index++) {
+        const statement = statements[index];
+        if (skip_block) {
+            if (
+                [
+                    IfStatement,
+                    ElseIfStatement,
+                    ElseStatement,
+                    EndifStatement
+                ].some(i => statement instanceof i)
+            ) {
+                skip_block = false;
             } else {
-                includePath = path.resolve(path.dirname(envPath), includePath);
-                envNode.includes.push( (await getEnvAsync(includePath, name)) );
+                continue;
             }
         }
-    }
-    return envNode;
-};
 
-export { getEnvAsync, getEnv };
+        if (statement instanceof KVStatement) {
+            if (statement.property) {
+                if (!this[statement.field]) this[statement.field] = {};
+                this[statement.field][statement.property] = statement.getValue();
+            } else {
+                this[statement.field] = statement.getValue();
+            }
+        }
+        else if (statement instanceof IncludeStatement) {
+            await getEnvAsync.call(
+                this,
+                mergePath(envPath, statement.getValue())
+            );
+        }
+        else if (statement instanceof ElseIfStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof IfStatement) {
+            pre_condition = statement.convert2function().call(this);
+            if (!pre_condition) {
+                skip_block = true;
+            }
+        }
+        else if (statement instanceof ElseStatement) {
+            if (pre_condition) {
+                skip_block = true;
+                continue;
+            }
+        }
+        else if (statement instanceof EndifStatement) {
+            pre_condition = false;
+        }
+    }
+}
+
+/**
+ * export modules
+ */
+export { getEnv, getEnvAsync };

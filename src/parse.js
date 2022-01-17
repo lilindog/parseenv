@@ -1,9 +1,4 @@
-const fs = require("fs");
-const content = fs.readFileSync("test.env").toString("utf8");
-// console.log(content.split("").map((i, index) => `(${index}) -> ${i}`));
-// 接下来接着解决if else 语句解析问题
-
-const {
+import {
     KVStatement,
     IfStatement,
     ElseIfStatement,
@@ -13,7 +8,7 @@ const {
     Operator,
     IncludeStatement,
     CommentStatement
-} = require("./statementTypes");
+} from "./statementTypes.js";
 
 let INDEX = 0;
 let result = [];
@@ -180,6 +175,7 @@ function parse (content = "") {
                 if (
                     !pre_condition_statement ||
                     (
+                        !(pre_condition_statement instanceof IfStatement) &&
                         !(pre_condition_statement instanceof ElseIfStatement) &&
                         !(pre_condition_statement instanceof ElseStatement)
                     )
@@ -274,8 +270,12 @@ function parse (content = "") {
                     statement.field = s;
                     char = input[INDEX];
                     if (char === "{") {
+                        INDEX++;
+                        IN_MAP = true;
                         statement.type = KVStatement.Types.MAP;
                     } else if (char === "[") {
+                        INDEX++;
+                        IN_LIST = true;
                         statement.type = KVStatement.Types.LIST;
                     } else if (isSpace(char) || char === "=") {
                         statement.type = KVStatement.Types.KEY;
@@ -405,7 +405,6 @@ function parse (content = "") {
                     }
                     // use variable map 开始
                     else if (char === "{") {
-                        debugger;
                         IN_USE_VARIABLE_MAP = true;
                         INDEX++;
                     } else {
@@ -514,7 +513,11 @@ function parse (content = "") {
     return return_result;
 }
 
-console.log(parse(content));
+// debug begin =============
+// const st = parse(content);
+// const cds = st.filter(i => i instanceof IfStatement || i instanceof ElseIfStatement);
+// cds.forEach(i => console.log(i.convert2function().toString()));
+// debug end ===============
 
 function readCharByCount (count) {
     return input.slice(INDEX, INDEX + count);
@@ -647,7 +650,14 @@ function getErrorText (text = "", position = -1) {
     }
     lastLinePreLen += preSpaceLen;
     tips += " ".repeat(lastLinePreLen) + "^\r\n";
-    tips += " ".repeat(lastLinePreLen) + "问题在此处\r\n";
+    tips += " ".repeat(lastLinePreLen) + "语法错误\r\n";
     tips += " ".repeat(lastLinePreLen) + "语法规则参考：https://github.com/lilindog/parseenv\r\n";
     return tips;
 }
+
+/**
+ * export modules
+ */
+export {
+    parse
+};
