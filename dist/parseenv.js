@@ -1,6 +1,6 @@
 
 /**
- * Parseenv v4.1.0
+ * Parseenv v4.1.1
  * Author lilindog<lilin@lilin.site>
  * Last-Modify 2022/1/18
  * License ISC
@@ -198,7 +198,7 @@ class IfStatement extends RowBase {
                         break;
                     }
                     case Condition.Types.USE_ENV: {
-                        preConditionCode = ` process?.${condition.field} `;
+                        preConditionCode = ` process.env?.${condition.field} `;
                         code += preConditionCode;
                         break;
                     }

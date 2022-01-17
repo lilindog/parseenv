@@ -172,7 +172,7 @@ class IfStatement extends RowBase {
                         break;
                     }
                     case Condition.Types.USE_ENV: {
-                        preConditionCode = ` process?.${condition.field} `;
+                        preConditionCode = ` process.env?.${condition.field} `;
                         code += preConditionCode;
                         break;
                     }
