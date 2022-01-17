@@ -32,7 +32,7 @@ persons[] = lisi
 ```
 
 ## 👋 if、elseif 
-条件语句，必须以endif结尾，运算符目前支持等于（=）、不等于（！=）。
+条件语句，必须以endif结尾，运算符目前支持等于（=）、不等于（！=）。   
 示例：   
 ```env
 _MODE_ = production

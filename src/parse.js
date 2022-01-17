@@ -651,7 +651,7 @@ function getErrorText (text = "", position = -1) {
     lastLinePreLen += preSpaceLen;
     tips += " ".repeat(lastLinePreLen) + "^\r\n";
     tips += " ".repeat(lastLinePreLen) + "语法错误\r\n";
-    tips += " ".repeat(lastLinePreLen) + "语法规则参考：https://github.com/lilindog/parseenv\r\n";
+    tips += " ".repeat(lastLinePreLen) + "语法规则参考：https://github.com/lilindog/parseenv/blob/master/doc/grammar.md\r\n";
     return tips;
 }
 
