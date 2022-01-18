@@ -172,7 +172,13 @@ class IfStatement extends RowBase {
                         break;
                     }
                     case Condition.Types.USE_ENV: {
-                        preConditionCode = ` process.env?.${condition.field} `;
+                        preConditionCode = ` 
+                            (
+                                isNaN(Number(process.env?.${condition.field})) ? 
+                                process.env?.${condition.field} : 
+                                Number(process.env?.${condition.field})
+                            ) 
+                        `;
                         code += preConditionCode;
                         break;
                     }
