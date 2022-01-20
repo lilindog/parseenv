@@ -1,8 +1,8 @@
 
 /**
- * Parseenv v4.1.2
+ * Parseenv v4.1.3
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2022/1/18
+ * Last-Modify 2022/1/20
  * License ISC
  */
 
@@ -23,6 +23,7 @@ var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
 var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
 
 const kConfigIsStrict = Symbol("k_config_is_strict");
+const kConfigTimeout = Symbol("k_config_timeout");
 
 /**
  * handle value env insert
@@ -1007,7 +1008,7 @@ function mergePath (left, right) {
 const requestRemoteEnv = (
     remoteUrl,
     resolveCb,
-    timeout = 1000,
+    timeout = global[kConfigTimeout] || 1000,
     redirects = 1
 ) => {
     let get;
@@ -1250,12 +1251,18 @@ async function getEnvAsync (envPath) {
  * @param {String} envPath 本地env文件路径或者远程env文件链接
  * @param {Object} [options] 配置对象，可选
  * @param {Boolean} [options.isStrict] 是否是严格模式，严格模式下env文件找不到会抛错
+ * @param {Number} [options.timeout] 加载远程env文件的超时时间，单位为ms， 缺省为1秒
  * @return {(Object|Promise<Object>)}
  */
 var main = (envPath, options) => {
     if (options && {}.toString.call(options) === "[object Object]") {
-        const { isStrict } = options;
-        global[kConfigIsStrict] = isStrict;
+        const { isStrict, timeout } = options;
+        if (isStrict !== undefined && typeof isStrict === "boolean") {
+            global[kConfigIsStrict] = isStrict;
+        }
+        if (timeout && (typeof timeout === "number") && timeout > 0) {
+            global[kConfigTimeout] = timeout;
+        }
     }
     const context = {};
     if (isRemotePath(envPath) || hasRemotePath(envPath)) {

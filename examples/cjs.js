@@ -1,7 +1,7 @@
 const parseenv = require("../dist/parseenv");
 
 function run (path) {
-    const res = parseenv(path);
+    const res = parseenv(path, { timeout: 2000 });
     if (res instanceof Promise) {
         res.then(res => {
             console.log("async:");

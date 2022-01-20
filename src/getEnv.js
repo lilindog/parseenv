@@ -21,6 +21,7 @@ import {
     IncludeStatement
 } from "./statementTypes.js";
 import { parse } from "./parse.js";
+import { kConfigTimeout } from "./constans.js";
 
 function mergePath (left, right) {
     if (isRemotePath(right)) {
@@ -46,7 +47,7 @@ function mergePath (left, right) {
 const requestRemoteEnv = (
     remoteUrl,
     resolveCb,
-    timeout = 1000,
+    timeout = global[kConfigTimeout] || 1000,
     redirects = 1
 ) => {
     let get;

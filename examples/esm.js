@@ -1,7 +1,7 @@
 import parseenv from "../src/main.js";
 
 function run (path) {
-    const res = parseenv(path);
+    const res = parseenv(path, { timeout: 2000, isStrict: true });
     if (res instanceof Promise) {
         res.then(res => {
             console.log("async:");
