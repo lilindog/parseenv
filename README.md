@@ -30,3 +30,4 @@ console.log(parseenv("./production.env")); // Object|Promise<Object>
 
 ## 👉 示例
 * [从远程加载数据库账密配置](./doc/example1.md)
+* [多同事间同步使用相同env配置](./doc/example2.md)
