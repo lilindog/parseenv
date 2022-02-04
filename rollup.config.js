@@ -22,11 +22,20 @@ export default {
         "https",
         "fs"
     ],
-    output: {
-        exports: "default",
-        file: "dist/parseenv.js",
-        format: "cjs",
-        banner: banner.replace(/\n+/g, "").replace(/\+/g, "\n"),
-        sourcemap: true
-    }
+    output: [
+        {
+            exports: "default",
+            file: "dist/parseenv.js",
+            format: "cjs",
+            banner: banner.replace(/\n+/g, "").replace(/\+/g, "\n"),
+            sourcemap: true
+        },
+        {
+            exports: "default",
+            file: "dist/parseenv.mjs",
+            format: "esm",
+            banner: banner.replace(/\n+/g, "").replace(/\+/g, "\n"),
+            sourcemap: true
+        },
+    ]
 }

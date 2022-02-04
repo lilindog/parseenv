@@ -1,4 +1,4 @@
-import parseenv from "../src/main.js";
+import parseenv from "parseenv";
 
 function run (path) {
     const res = parseenv(path, { timeout: 2000, isStrict: true });

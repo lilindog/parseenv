@@ -6,21 +6,11 @@
  * License undefined
  */
 
-'use strict';
-
-var http = require('http');
-var https = require('https');
-var url = require('url');
-var path = require('path');
-var fs = require('fs');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var http__default = /*#__PURE__*/_interopDefaultLegacy(http);
-var https__default = /*#__PURE__*/_interopDefaultLegacy(https);
-var url__default = /*#__PURE__*/_interopDefaultLegacy(url);
-var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
-var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
+import http from 'http';
+import https from 'https';
+import url from 'url';
+import path from 'path';
+import fs from 'fs';
 
 const kConfigIsStrict = Symbol("k_config_is_strict");
 const kConfigTimeout = Symbol("k_config_timeout");
@@ -959,22 +949,22 @@ const isRemotePath = path => path.startsWith("http");
  * @public
  */
 const hasRemotePath = envPath => {
-    if (!path__default["default"].isAbsolute(envPath)) {
-        envPath = path__default["default"].resolve(envPath);
+    if (!path.isAbsolute(envPath)) {
+        envPath = path.resolve(envPath);
     }
-    if (!fs__default["default"].existsSync(envPath)) {
+    if (!fs.existsSync(envPath)) {
         return false;
     }
     let statements = [];
     try {
-        statements = parse(fs__default["default"].readFileSync(envPath).toString("utf8")).filter(i => i instanceof IncludeStatement);
+        statements = parse(fs.readFileSync(envPath).toString("utf8")).filter(i => i instanceof IncludeStatement);
     } catch (err) {
         log(envPath + "\r\n" + err, true);
     }
     for (let include of statements) {
         if (isRemotePath(include.value)) return true;
-        const envPathDir = path__default["default"].dirname(envPath);
-        if (hasRemotePath(path__default["default"].resolve(envPathDir, include.getValue()))) return true;
+        const envPathDir = path.dirname(envPath);
+        if (hasRemotePath(path.resolve(envPathDir, include.getValue()))) return true;
     }
     return false;
 };
@@ -989,9 +979,9 @@ function mergePath (left, right) {
         return right;
     }
     if (isRemotePath(left)) {
-        return new url__default["default"].URL(right, left).toString();
+        return new url.URL(right, left).toString();
     } else {
-        return path__default["default"].resolve(path__default["default"].dirname(left), right);
+        return path.resolve(path.dirname(left), right);
     }
 }
 
@@ -1013,9 +1003,9 @@ const requestRemoteEnv = (
 ) => {
     let get;
     if (remoteUrl.startsWith("https:")) {
-        ({ get } = https__default["default"]);
+        ({ get } = https);
     } else if (remoteUrl.startsWith("http:")) {
-        ({ get } = http__default["default"]);
+        ({ get } = http);
     }
     let isResolveCb = resolveCb && typeof resolveCb === "function";
     let done;
@@ -1039,9 +1029,9 @@ const requestRemoteEnv = (
                 done("");
                 return;
             }
-            const u = new url__default["default"].URL(remoteUrl);
+            const u = new url.URL(remoteUrl);
             u.hostname = u.hash = u.search = "";
-            const redirectUrl = new url__default["default"].URL(res.headers.location, u.href).href;
+            const redirectUrl = new url.URL(res.headers.location, u.href).href;
             requestRemoteEnv(redirectUrl, done, timeout, --redirects);
             return;
         }
@@ -1079,14 +1069,14 @@ const requestRemoteEnv = (
  * @public
  */
 function getEnv (envPath) {
-    if (!path__default["default"].isAbsolute(envPath)) {
-        envPath = path__default["default"].resolve(envPath);
+    if (!path.isAbsolute(envPath)) {
+        envPath = path.resolve(envPath);
     }
-    if (!fs__default["default"].existsSync(envPath)) {
+    if (!fs.existsSync(envPath)) {
         log(`"${envPath}" env文件不存在！`);
         return;
     }
-    const content = fs__default["default"].readFileSync(envPath).toString("utf8");
+    const content = fs.readFileSync(envPath).toString("utf8");
     let statements = [];
     try {
         statements = parse(content);
@@ -1168,12 +1158,12 @@ async function getEnvAsync (envPath) {
     if (isRemotePath(envPath)) {
         content = await requestRemoteEnv(envPath);
     } else {
-        if (!path__default["default"].isAbsolute(envPath)) envPath = path__default["default"].resolve(envPath);
-        if (!fs__default["default"].existsSync(envPath)) {
+        if (!path.isAbsolute(envPath)) envPath = path.resolve(envPath);
+        if (!fs.existsSync(envPath)) {
             log(`"${envPath}" env文件不存在！`);
             return;
         }
-        content = fs__default["default"].readFileSync(envPath).toString("utf8");
+        content = fs.readFileSync(envPath).toString("utf8");
     }
 
     let statements = [];
@@ -1273,5 +1263,5 @@ var main = (envPath, options) => {
     }
 };
 
-module.exports = main;
-//# sourceMappingURL=parseenv.js.map
+export { main as default };
+//# sourceMappingURL=parseenv.mjs.map
