@@ -2,3 +2,4 @@ dist
 examples
 test
 scripts
+*.d.ts
