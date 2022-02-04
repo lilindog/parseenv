@@ -24,8 +24,13 @@
 
 api简单示例：
 ```js
+// commonjs
 const parseenv = require("parseenv");
 console.log(parseenv("./production.env")); // Object|Promise<Object>
+
+// esm
+import parseenv from "parseenv";
+console.log(parseenv("./production.env"));   
 ```
 
 ## 👉 示例
