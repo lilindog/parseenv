@@ -1,9 +1,6 @@
 "use strict";
 
-const env = process.env;
-const version = env.npm_package_version;
-const author = env.npm_package_author_name + "<" + env.npm_package_author_email + ">";
-const license = env.npm_package_license;
+const { version, author, license } = require("./package");
 const banner = `+
 /**+
  * Parseenv v${version}+

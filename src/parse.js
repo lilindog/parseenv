@@ -50,7 +50,7 @@ function parse (content = "") {
 
                 const howIf = readCharByCount(3).toLowerCase();
                 const howElse = readCharByCount(4).toLowerCase();
-                const howElseIf = readCharByCount(8).toLowerCase();
+                const howElseIf = readCharByCount(7).toLowerCase();
                 const howEndIf = readCharByCount(5).toLowerCase();
                 const howInclude = readCharByCount(8).toLowerCase();
                 let skipLen = 0;
@@ -64,7 +64,7 @@ function parse (content = "") {
                         STATE = "IF";
                     }
                     INDEX -= (skipLen + 3);
-                } else if (howElseIf === "else if ") {
+                } else if (howElseIf === "else if") {
                     STATE = "ELSEIF";
                 } else if (howElse === "else") {
                     INDEX += 4;
@@ -126,6 +126,15 @@ function parse (content = "") {
 
             case "ELSEIF": {
                 if (
+                    readIdentifier().toLowerCase() !== "else" ||
+                    skipSpace() === 0 ||
+                    readIdentifier().toLowerCase() !== "if" ||
+                    skipSpace() === 0
+                ) {
+                    STATE = "";
+                    break;
+                }
+                if (
                     !pre_condition_statement ||
                     (
                         !(pre_condition_statement instanceof ElseIfStatement) &&
@@ -137,16 +146,7 @@ function parse (content = "") {
                     break;
                 }
                 pre_condition_statement = statement = new ElseIfStatement({ position: INDEX });
-                if (
-                    readIdentifier().toLowerCase() === "else" &&
-                    skipSpace() > 0 &&
-                    readIdentifier().toLowerCase() === "if" &&
-                    skipSpace() > 0
-                ) {
-                    STATE = "CONDITION";
-                } else {
-                    STATE = "";
-                }
+                STATE = "CONDITION";
                 break;
             }
 

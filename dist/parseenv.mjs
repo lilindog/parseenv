@@ -1,9 +1,9 @@
 
 /**
- * Parseenv v4.1.5
- * Author undefined<undefined>
- * Last-Modify 2022/2/4
- * License undefined
+ * Parseenv v4.1.6
+ * Author lilindog<lilin@lilin.site>
+ * Last-Modify 2022/2/7
+ * License ISC
  */
 
 import http from 'http';
@@ -322,7 +322,7 @@ function parse (content = "") {
 
                 const howIf = readCharByCount(3).toLowerCase();
                 const howElse = readCharByCount(4).toLowerCase();
-                const howElseIf = readCharByCount(8).toLowerCase();
+                const howElseIf = readCharByCount(7).toLowerCase();
                 const howEndIf = readCharByCount(5).toLowerCase();
                 const howInclude = readCharByCount(8).toLowerCase();
                 let skipLen = 0;
@@ -336,7 +336,7 @@ function parse (content = "") {
                         STATE = "IF";
                     }
                     INDEX -= (skipLen + 3);
-                } else if (howElseIf === "else if ") {
+                } else if (howElseIf === "else if") {
                     STATE = "ELSEIF";
                 } else if (howElse === "else") {
                     INDEX += 4;
@@ -398,6 +398,15 @@ function parse (content = "") {
 
             case "ELSEIF": {
                 if (
+                    readIdentifier().toLowerCase() !== "else" ||
+                    skipSpace() === 0 ||
+                    readIdentifier().toLowerCase() !== "if" ||
+                    skipSpace() === 0
+                ) {
+                    STATE = "";
+                    break;
+                }
+                if (
                     !pre_condition_statement ||
                     (
                         !(pre_condition_statement instanceof ElseIfStatement) &&
@@ -409,16 +418,7 @@ function parse (content = "") {
                     break;
                 }
                 pre_condition_statement = statement = new ElseIfStatement({ position: INDEX });
-                if (
-                    readIdentifier().toLowerCase() === "else" &&
-                    skipSpace() > 0 &&
-                    readIdentifier().toLowerCase() === "if" &&
-                    skipSpace() > 0
-                ) {
-                    STATE = "CONDITION";
-                } else {
-                    STATE = "";
-                }
+                STATE = "CONDITION";
                 break;
             }
 
@@ -985,6 +985,22 @@ function mergePath (left, right) {
     }
 }
 
+function handleKVStatement2Context (statement = {}) {
+    ({
+        [KVStatement.Types.KEY] () {
+            this[statement.field] = statement.getValue();
+        },
+        [KVStatement.Types.MAP] () {
+            if (!this[statement.field]) this[statement.field] = {};
+            this[statement.field][statement.property] = statement.getValue();
+        },
+        [KVStatement.Types.LIST] () {
+            if (!this[statement.field]) this[statement.field] = [];
+            this[statement.field].push(statement.getValue());
+        }
+    })[statement.type].call(this);
+}
+
 /**
  * 请求远程url的env文件
  *
@@ -1105,12 +1121,7 @@ function getEnv (envPath) {
         }
 
         if (statement instanceof KVStatement) {
-            if (statement.property) {
-                if (!this[statement.field]) this[statement.field] = {};
-                this[statement.field][statement.property] = statement.getValue();
-            } else {
-                this[statement.field] = statement.getValue();
-            }
+            handleKVStatement2Context.call(this, statement);
         }
         else if (statement instanceof IncludeStatement) {
             getEnv.call(
@@ -1194,12 +1205,7 @@ async function getEnvAsync (envPath) {
         }
 
         if (statement instanceof KVStatement) {
-            if (statement.property) {
-                if (!this[statement.field]) this[statement.field] = {};
-                this[statement.field][statement.property] = statement.getValue();
-            } else {
-                this[statement.field] = statement.getValue();
-            }
+            handleKVStatement2Context.call(this, statement);
         }
         else if (statement instanceof IncludeStatement) {
             await getEnvAsync.call(

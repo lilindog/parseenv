@@ -34,6 +34,22 @@ function mergePath (left, right) {
     }
 }
 
+function handleKVStatement2Context (statement = {}) {
+    ({
+        [KVStatement.Types.KEY] () {
+            this[statement.field] = statement.getValue();
+        },
+        [KVStatement.Types.MAP] () {
+            if (!this[statement.field]) this[statement.field] = {};
+            this[statement.field][statement.property] = statement.getValue();
+        },
+        [KVStatement.Types.LIST] () {
+            if (!this[statement.field]) this[statement.field] = [];
+            this[statement.field].push(statement.getValue());
+        }
+    })[statement.type].call(this);
+}
+
 /**
  * 请求远程url的env文件
  *
@@ -154,12 +170,7 @@ function getEnv (envPath) {
         }
 
         if (statement instanceof KVStatement) {
-            if (statement.property) {
-                if (!this[statement.field]) this[statement.field] = {};
-                this[statement.field][statement.property] = statement.getValue();
-            } else {
-                this[statement.field] = statement.getValue();
-            }
+            handleKVStatement2Context.call(this, statement);
         }
         else if (statement instanceof IncludeStatement) {
             getEnv.call(
@@ -243,12 +254,7 @@ async function getEnvAsync (envPath) {
         }
 
         if (statement instanceof KVStatement) {
-            if (statement.property) {
-                if (!this[statement.field]) this[statement.field] = {};
-                this[statement.field][statement.property] = statement.getValue();
-            } else {
-                this[statement.field] = statement.getValue();
-            }
+            handleKVStatement2Context.call(this, statement);
         }
         else if (statement instanceof IncludeStatement) {
             await getEnvAsync.call(
