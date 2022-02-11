@@ -1,8 +1,8 @@
 
 /**
- * Parseenv v4.1.6
+ * Parseenv v4.1.7
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2022/2/7
+ * Last-Modify 2022/2/11
  * License ISC
  */
 
@@ -218,7 +218,7 @@ class IfStatement extends RowBase {
                 }
             }
         });
-        return new Function ("return " + code + ";");
+        return new Function ("return ( " + code + " );");
     }
 }
 

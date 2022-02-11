@@ -191,7 +191,7 @@ class IfStatement extends RowBase {
                 }
             }
         });
-        return new Function ("return " + code + ";");
+        return new Function ("return ( " + code + " );");
     }
 }
 
