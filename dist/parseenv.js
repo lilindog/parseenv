@@ -2,8 +2,8 @@
 /**
  * Parseenv v4.1.7
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2022/2/11
- * License ISC
+ * Last-Modify 2022/7/31
+ * License MIT
  */
 
 'use strict';
@@ -959,22 +959,22 @@ const isRemotePath = path => path.startsWith("http");
  * @public
  */
 const hasRemotePath = envPath => {
-    if (!path__default["default"].isAbsolute(envPath)) {
-        envPath = path__default["default"].resolve(envPath);
+    if (!path__default['default'].isAbsolute(envPath)) {
+        envPath = path__default['default'].resolve(envPath);
     }
-    if (!fs__default["default"].existsSync(envPath)) {
+    if (!fs__default['default'].existsSync(envPath)) {
         return false;
     }
     let statements = [];
     try {
-        statements = parse(fs__default["default"].readFileSync(envPath).toString("utf8")).filter(i => i instanceof IncludeStatement);
+        statements = parse(fs__default['default'].readFileSync(envPath).toString("utf8")).filter(i => i instanceof IncludeStatement);
     } catch (err) {
         log(envPath + "\r\n" + err, true);
     }
     for (let include of statements) {
         if (isRemotePath(include.value)) return true;
-        const envPathDir = path__default["default"].dirname(envPath);
-        if (hasRemotePath(path__default["default"].resolve(envPathDir, include.getValue()))) return true;
+        const envPathDir = path__default['default'].dirname(envPath);
+        if (hasRemotePath(path__default['default'].resolve(envPathDir, include.getValue()))) return true;
     }
     return false;
 };
@@ -989,9 +989,9 @@ function mergePath (left, right) {
         return right;
     }
     if (isRemotePath(left)) {
-        return new url__default["default"].URL(right, left).toString();
+        return new url__default['default'].URL(right, left).toString();
     } else {
-        return path__default["default"].resolve(path__default["default"].dirname(left), right);
+        return path__default['default'].resolve(path__default['default'].dirname(left), right);
     }
 }
 
@@ -1029,9 +1029,9 @@ const requestRemoteEnv = (
 ) => {
     let get;
     if (remoteUrl.startsWith("https:")) {
-        ({ get } = https__default["default"]);
+        ({ get } = https__default['default']);
     } else if (remoteUrl.startsWith("http:")) {
-        ({ get } = http__default["default"]);
+        ({ get } = http__default['default']);
     }
     let isResolveCb = resolveCb && typeof resolveCb === "function";
     let done;
@@ -1055,9 +1055,9 @@ const requestRemoteEnv = (
                 done("");
                 return;
             }
-            const u = new url__default["default"].URL(remoteUrl);
+            const u = new url__default['default'].URL(remoteUrl);
             u.hostname = u.hash = u.search = "";
-            const redirectUrl = new url__default["default"].URL(res.headers.location, u.href).href;
+            const redirectUrl = new url__default['default'].URL(res.headers.location, u.href).href;
             requestRemoteEnv(redirectUrl, done, timeout, --redirects);
             return;
         }
@@ -1095,14 +1095,14 @@ const requestRemoteEnv = (
  * @public
  */
 function getEnv (envPath) {
-    if (!path__default["default"].isAbsolute(envPath)) {
-        envPath = path__default["default"].resolve(envPath);
+    if (!path__default['default'].isAbsolute(envPath)) {
+        envPath = path__default['default'].resolve(envPath);
     }
-    if (!fs__default["default"].existsSync(envPath)) {
+    if (!fs__default['default'].existsSync(envPath)) {
         log(`"${envPath}" env文件不存在！`);
         return;
     }
-    const content = fs__default["default"].readFileSync(envPath).toString("utf8");
+    const content = fs__default['default'].readFileSync(envPath).toString("utf8");
     let statements = [];
     try {
         statements = parse(content);
@@ -1179,12 +1179,12 @@ async function getEnvAsync (envPath) {
     if (isRemotePath(envPath)) {
         content = await requestRemoteEnv(envPath);
     } else {
-        if (!path__default["default"].isAbsolute(envPath)) envPath = path__default["default"].resolve(envPath);
-        if (!fs__default["default"].existsSync(envPath)) {
+        if (!path__default['default'].isAbsolute(envPath)) envPath = path__default['default'].resolve(envPath);
+        if (!fs__default['default'].existsSync(envPath)) {
             log(`"${envPath}" env文件不存在！`);
             return;
         }
-        content = fs__default["default"].readFileSync(envPath).toString("utf8");
+        content = fs__default['default'].readFileSync(envPath).toString("utf8");
     }
 
     let statements = [];

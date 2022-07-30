@@ -2,8 +2,8 @@
 /**
  * Parseenv v4.1.7
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2022/2/11
- * License ISC
+ * Last-Modify 2022/7/31
+ * License MIT
  */
 
 import http from 'http';
@@ -1269,5 +1269,5 @@ var main = (envPath, options) => {
     }
 };
 
-export { main as default };
+export default main;
 //# sourceMappingURL=parseenv.mjs.map
