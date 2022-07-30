@@ -1,6 +1,6 @@
 # parseenv
 
-这是一个.env文件解析器，它兼容dotenv的语法格式。
+这是一个.env文件解析器，它兼容dotenv的语法格式。   
 
 ## 🚨 注意
 条件语句解析生成的运算函数内部使用了可选链运算符，node版本需>=14。      
@@ -15,7 +15,10 @@
 * 支持环境变量插值。   
 
 ## ✊ 语法
-除了支持dotenv的语法外，新增的语法请看[这里](./doc/grammar.md)。   
+除了支持dotenv的语法外，新增的语法请看[这里](./doc/grammar.md)。  
+会检查语法，若语法错误会提示如下图：  
+
+![doc/grammar_error_example.png](doc/grammar_error_example.png)
 
 ## 🔨 API
 模块导出仅一个函数，参数是env文件的地址，返回解析结果或者带有结果的Promise。     
