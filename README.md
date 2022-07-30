@@ -39,3 +39,9 @@ console.log(parseenv("./production.env"));
 ## 👉 示例
 * [从远程加载数据库账密配置](./doc/example1.md)
 * [多同事间同步使用相同env配置](./doc/example2.md)
+
+## 🙏 Thanks
+Thanks to JetBrains OSS development license   
+感谢JetBrains的开源license      
+![JetBrains Logo (Main) logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)
+![WebStorm logo](https://resources.jetbrains.com/storage/products/company/brand/logos/WebStorm.svg)
