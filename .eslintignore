@@ -3,3 +3,4 @@ examples
 test
 scripts
 *.d.ts
+githooks

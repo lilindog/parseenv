@@ -14,7 +14,7 @@
   "scripts": {
     "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
-    "lint": "eslint src/",
+    "lint": "node node_modules/eslint/bin/eslint.js src/",
     "build": "rollup --config rollup.config.js",
     "dev": "rollup --config rollup.config.js -w src/"
   },
