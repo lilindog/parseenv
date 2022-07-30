@@ -43,5 +43,4 @@ console.log(parseenv("./production.env"));
 ## 🙏 Thanks
 Thanks to JetBrains OSS development license   
 感谢JetBrains的开源license      
-![JetBrains Logo (Main) logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)
-![WebStorm logo](https://resources.jetbrains.com/storage/products/company/brand/logos/WebStorm.svg)
+![JetBrains Black Box Logo logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_square.svg)
