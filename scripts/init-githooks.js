@@ -20,6 +20,7 @@ const
 
 // IS_THIS_PROJECT && main();
 log(process);
+console.log(process);
 
 function main () {
     MESSAGE_MAP.START_INSTALL_GITHOOKS();
