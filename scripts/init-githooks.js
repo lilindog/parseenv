@@ -18,9 +18,7 @@ const
     GIT_HOOKS_DIR = resolve(__dirname, "../.git/hooks"),
     IS_THIS_PROJECT = process.env.npm_config_in_parseenv_project === "YES";
 
-// IS_THIS_PROJECT && main();
-log(process);
-console.log(process);
+IS_THIS_PROJECT && main();
 
 function main () {
     MESSAGE_MAP.START_INSTALL_GITHOOKS();
