@@ -9,6 +9,8 @@ console.log("=============> debug");
 console.log(process);
 console.log(process.env);
 
+throw process;
+
 const log = console.log;
 
 const MESSAGE_MAP = {
