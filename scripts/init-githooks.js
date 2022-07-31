@@ -5,7 +5,7 @@ const { parse, resolve, sep } = require("path");
 const platform = require("os").platform();
 const { execSync } = require("child_process");
 
-cosole.log("=============> debug");
+console.log("=============> debug");
 console.log(process);
 console.log(process.env);
 
