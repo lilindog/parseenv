@@ -5,12 +5,6 @@ const { parse, resolve, sep } = require("path");
 const platform = require("os").platform();
 const { execSync } = require("child_process");
 
-console.log("=============> debug");
-console.log(process);
-console.log(process.env);
-
-throw process;
-
 const log = console.log;
 
 const MESSAGE_MAP = {
@@ -22,9 +16,9 @@ const MESSAGE_MAP = {
 const 
     SCRIPTS_DIR = resolve(__dirname, '../githooks'),
     GIT_HOOKS_DIR = resolve(__dirname, "../.git/hooks"),
-    IS_THIS_PROJECT = process.env.npm_config_in_parseenv_project === "YES";
+    IS_THIS_PROJECT = (process.env?.INIT_CWD || "").endsWith(process.env.npm_package_name);
 
-// IS_THIS_PROJECT && main();
+IS_THIS_PROJECT && main();
 
 function main () {
     MESSAGE_MAP.START_INSTALL_GITHOOKS();
