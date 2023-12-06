@@ -10,7 +10,7 @@ const banner = `+
  */+
 `;
 
-export default {
+module.exports = {
     input: "src/main.js",
     external: [
         "url",

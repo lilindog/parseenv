@@ -329,8 +329,13 @@ function parse (content = "") {
                     let s = "";
                     while (INDEX < input.length) {
                         char = input[INDEX];
+                        if (isSpace(char)) {
+                            const spaceCount = skipSpace();
+                            s += " ".repeat(spaceCount);
+                            char = input[INDEX];
+                        }
                         if (
-                            isSpace(char) || isCRLF(char) ||
+                            isCRLF(char) ||
                             (char === "{" && input[INDEX - 1] !== "\\") ||
                             // 不需要处理“}”, 仅当检测到未转义符的“}”时让出，好让后续逻辑抛错！
                             (char === "}" && input[INDEX - 1] !== "\\")

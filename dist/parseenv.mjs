@@ -1,8 +1,8 @@
 
 /**
- * Parseenv v4.1.7
+ * Parseenv v4.1.8
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2022/7/31
+ * Last-Modify 2023/12/6
  * License MIT
  */
 
@@ -601,8 +601,13 @@ function parse (content = "") {
                     let s = "";
                     while (INDEX < input.length) {
                         char = input[INDEX];
+                        if (isSpace(char)) {
+                            const spaceCount = skipSpace();
+                            s += " ".repeat(spaceCount);
+                            char = input[INDEX];
+                        }
                         if (
-                            isSpace(char) || isCRLF(char) ||
+                            isCRLF(char) ||
                             (char === "{" && input[INDEX - 1] !== "\\") ||
                             // 不需要处理“}”, 仅当检测到未转义符的“}”时让出，好让后续逻辑抛错！
                             (char === "}" && input[INDEX - 1] !== "\\")
@@ -1269,5 +1274,5 @@ var main = (envPath, options) => {
     }
 };
 
-export default main;
+export { main as default };
 //# sourceMappingURL=parseenv.mjs.map

@@ -1,6 +1,6 @@
 {
   "name": "parseenv",
-  "version": "4.1.7",
+  "version": "4.1.8",
   "description": "兼容dotenv且支持更多语法的.env文件解析器",
   "main": "./dist/parseenv.js",
   "type": "commonjs",
@@ -15,8 +15,8 @@
     "test": "mocha",
     "preinstall": "node scripts/init-githooks.js",
     "lint": "node node_modules/eslint/bin/eslint.js src/",
-    "build": "rollup --config rollup.config.js",
-    "dev": "rollup --config rollup.config.js -w src/"
+    "build": "npx rollup@2.62.0 --config rollup.config.js",
+    "dev": "npx rollup@2.62.0 --config rollup.config.js -w src/"
   },
   "engines": {
     "node": ">=14.0.0"
@@ -37,7 +37,6 @@
     "chalk": "^4.1.0",
     "eslint": "^7.24.0",
     "express": "^4.17.2",
-    "mocha": "^9.0.1",
-    "rollup": "^2.62.0"
+    "mocha": "^9.0.1"
   }
 }
