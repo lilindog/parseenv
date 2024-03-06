@@ -1,4 +1,4 @@
-import parseenv from "parseenv";
+import parseenv from "../dist/parseenv.mjs";
 
 function run (path) {
     const res = parseenv(path, { timeout: 2000, isStrict: true });

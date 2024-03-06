@@ -28,11 +28,11 @@ function handleValue () {
     }
     results.forEach(key => {
         let field = key.slice(1, -1);
-        field = process.env?.[field] ? String(process.env?.[field]) : "NONE";
+        field = process.env?.[field] ? String(process.env?.[field]) : "";
         value = value.replace(key, field);
     });
     // "123" -> Number or "123c" -> String
-    value = isNaN(Number(value)) ? value : Number(value);
+    value = isNaN(value) ? value : BigInt(value);
     return value;
 }
 

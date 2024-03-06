@@ -149,7 +149,6 @@ function getEnv (envPath) {
         log(`${envPath}\r\n${err}`, true);
     }
 
-    // handle statement
     let pre_condition = false;
     let skip_block = false;
     for (let index = 0; index < statements.length; index++) {

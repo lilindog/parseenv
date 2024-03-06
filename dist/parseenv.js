@@ -1,8 +1,8 @@
 
 /**
- * Parseenv v4.1.8
+ * Parseenv v4.2.0
  * Author lilindog<lilin@lilin.site>
- * Last-Modify 2023/12/6
+ * Last-Modify 2024/3/6
  * License MIT
  */
 
@@ -55,11 +55,11 @@ function handleValue () {
     }
     results.forEach(key => {
         let field = key.slice(1, -1);
-        field = process.env?.[field] ? String(process.env?.[field]) : "NONE";
+        field = process.env?.[field] ? String(process.env?.[field]) : "";
         value = value.replace(key, field);
     });
     // "123" -> Number or "123c" -> String
-    value = isNaN(Number(value)) ? value : Number(value);
+    value = isNaN(value) ? value : BigInt(value);
     return value;
 }
 
@@ -1115,7 +1115,6 @@ function getEnv (envPath) {
         log(`${envPath}\r\n${err}`, true);
     }
 
-    // handle statement
     let pre_condition = false;
     let skip_block = false;
     for (let index = 0; index < statements.length; index++) {

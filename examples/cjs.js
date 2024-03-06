@@ -1,4 +1,4 @@
-const parseenv = require("parseenv");
+const parseenv = require("../src/main.js"); 
 
 function run (path) {
     const res = parseenv(path, { timeout: 2000 });
