@@ -1,6 +1,6 @@
 
 /**
- * Parseenv v4.2.0
+ * Parseenv v4.2.1
  * Author lilindog<lilin@lilin.site>
  * Last-Modify 2024/3/6
  * License MIT
@@ -58,8 +58,19 @@ function handleValue () {
         field = process.env?.[field] ? String(process.env?.[field]) : "";
         value = value.replace(key, field);
     });
-    // "123" -> Number or "123c" -> String
-    value = isNaN(value) ? value : BigInt(value);
+    
+    value = (value || "").trim();
+
+    if (/^\d+$/.test(value)) {
+        /** bigint最为字符串处理 */
+        if (String(Number(value)) === value) value = Number(value);
+        /** 不是bigint作为数字类型处理 */
+        else value = String(value);
+    } else {
+        /** 无值按空字符串处理 */
+        value = value || "";
+    }
+
     return value;
 }
 
